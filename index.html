@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#05070a">
+<title>Cricket Universe — Manager Online Alpha</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="boot" class="boot active">
+  <div class="boot-graphic"></div>
+  <div class="boot-logo">CRICKET <span>UNIVERSE</span></div>
+  <div class="boot-kicker">MANAGER ONLINE • V1.1 ALPHA</div>
+  <button id="enterGame">PRESS TO CONTINUE</button>
+</div>
+
+<div id="app" class="app hidden">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-title">CRICKET <span>UNIVERSE</span></div>
+      <div class="brand-sub">AI CRICKET • MANAGER CONTROL • LIVE SPECTATORS</div>
+    </div>
+    <div class="top-right">
+      <div id="cloudBadge" class="badge amber">LOCAL MODE</div>
+      <div class="points">★ <b id="careerPoints">0</b></div>
+      <div class="user">
+        <div class="user-avatar" id="userAvatar">G</div>
+        <div><b id="userName">Guest</b><span id="userState">Preview profile</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- HOME -->
+    <section id="home" class="page active accent-cyan">
+      <div class="feature-label">FEATURED</div>
+      <div class="feature-card">
+        <div class="feature-copy">
+          <div class="eyebrow dark">ONLINE MANAGER CRICKET</div>
+          <h1>BUILD YOUR LEAGUE.<br><span>MANAGE THE DRAMA.</span></h1>
+          <p>Humans manage the teams. AI plays every ball. Managers submit XIs, select bowlers and batters, while everyone else watches live.</p>
+        </div>
+        <div class="feature-posters">
+          <div class="poster cyan">LIVE<br>MANAGER</div>
+          <div class="poster purple">T20<br>THRILLER</div>
+          <div class="poster gold">SUPER<br>OVER</div>
+          <div class="poster pink">CAREER<br>STATS</div>
+        </div>
+      </div>
+
+      <div class="subnav">
+        <button class="active" data-nav="home">Home</button>
+        <button data-nav="competitions">Competitions</button>
+        <button data-nav="liveHub">Live</button>
+        <button data-nav="academy">Academy</button>
+        <button data-nav="settings">Settings</button>
+      </div>
+
+      <div class="tile-strip six">
+        <button class="menu-tile selected" data-nav="quickMatch"><b>PLAY NOW</b><span>Host a single match</span></button>
+        <button class="menu-tile" data-nav="competitions"><b>COMPETITIONS</b><span>Create tournaments</span></button>
+        <button class="menu-tile" data-nav="managerHub"><b>MANAGER HUB</b><span>Claim & manage a team</span></button>
+        <button class="menu-tile" data-nav="liveHub"><b>LIVE MATCHES</b><span>Watch by code</span></button>
+        <button class="menu-tile" data-nav="career"><b>CAREER</b><span>Progress & records</span></button>
+        <button class="menu-tile" data-nav="account"><b>ONLINE</b><span>Account & cloud</span></button>
+      </div>
+    </section>
+
+    <!-- COMPETITIONS -->
+    <section id="competitions" class="page accent-pink">
+      <div class="hero-banner competition-hero">
+        <div><div class="eyebrow">COMPETITIONS</div><h2>Create your own cricket championship</h2><p>League, knockout, playoffs, manager assignments, points table, statistics and Super Overs.</p></div>
+        <div class="hero-trophy">🏆</div>
+      </div>
+      <div class="tile-strip four">
+        <button class="menu-tile selected" data-nav="competitionDesigner"><b>CREATE NEW</b><span>Competition Designer</span></button>
+        <button class="menu-tile" data-nav="tournamentDashboard"><b>MANAGE</b><span>Fixtures & manager codes</span></button>
+        <button class="menu-tile" data-nav="pointsTable"><b>POINTS TABLE</b><span>Standings & NRR</span></button>
+        <button class="menu-tile" data-nav="statistics"><b>STATISTICS</b><span>Runs, wickets & records</span></button>
+      </div>
+    </section>
+
+    <!-- COMPETITION DESIGNER -->
+    <section id="competitionDesigner" class="page accent-pink">
+      <div class="designer">
+        <div class="settings-list">
+          <div class="settings-title">Competition Designer</div>
+          <div class="setting selected"><label>Name</label><input id="compName" value="Friends Premier Championship"></div>
+          <div class="setting"><label>Structure</label><select id="compStructure"><option>League</option><option>Round Robin</option><option>Groups + Knockout</option><option>Knockout</option></select></div>
+          <div class="setting"><label>Match Type</label><select id="compFormat"><option>T20</option><option>T10</option></select></div>
+          <div class="setting"><label>Teams</label><select id="compTeamCount"><option>4</option><option>6</option><option selected>8</option><option>10</option></select></div>
+          <div class="setting"><label>Round Robins</label><select id="compRR"><option>1</option><option>2</option></select></div>
+          <div class="setting"><label>Has Finals</label><select id="compFinals"><option>Yes</option><option>No</option></select></div>
+          <div class="setting"><label>Final Teams</label><select id="compFinalTeams"><option>2</option><option selected>4</option></select></div>
+          <div class="settings-divider">Competition Points System</div>
+          <div class="setting"><label>Points For Win</label><input id="compWinPts" type="number" value="2"></div>
+          <div class="setting"><label>Points For Tie / NR</label><input id="compTiePts" type="number" value="1"></div>
+          <div class="setting"><label>Super Over</label><select id="compSuperOver"><option>Enabled</option><option>Disabled</option></select></div>
+          <div class="setting"><label>Manager Decision Timer</label><select id="decisionTimer"><option value="15">15 sec</option><option value="30" selected>30 sec</option><option value="60">60 sec</option></select></div>
+          <button id="saveCompetition" class="white-action">SAVE</button>
+        </div>
+        <div class="trophy-stage">
+          <div class="wire-arrows"></div>
+          <div class="trophy">🏆</div>
+          <h2 id="competitionPreview">Friends Premier Championship</h2>
+          <p id="competitionPreviewMeta">8 Teams • T20 • League</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOURNAMENT DASHBOARD -->
+    <section id="tournamentDashboard" class="page accent-pink">
+      <div class="screen-title"><div><div class="eyebrow">TOURNAMENT CONTROL</div><h2 id="tournamentName">No tournament selected</h2></div>
+        <select id="tournamentSelect"></select>
+      </div>
+      <div class="dashboard-grid">
+        <div class="panel span2">
+          <h3>Team Managers</h3>
+          <p class="muted">Give each manager only their private manager code. They sign in with their own account and claim that team.</p>
+          <div id="managerAssignments"></div>
+        </div>
+        <div class="panel">
+          <h3>Fixtures</h3>
+          <div id="fixtureList"></div>
+        </div>
+        <div class="panel">
+          <h3>Host Controls</h3>
+          <div id="hostFixturePanel" class="empty-state">Choose a fixture.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- POINTS -->
+    <section id="pointsTable" class="page accent-blue">
+      <div class="screen-title"><div><div class="eyebrow">COMPETITION</div><h2>Points Table</h2></div></div>
+      <div class="panel large"><div id="pointsTableContent"></div></div>
+    </section>
+
+    <!-- STATS -->
+    <section id="statistics" class="page accent-gold">
+      <div class="screen-title"><div><div class="eyebrow">TOURNAMENT</div><h2>Statistics</h2></div></div>
+      <div class="stats-panels">
+        <div class="panel"><h3>Top Run Scorers</h3><div id="runLeaders"></div></div>
+        <div class="panel"><h3>Top Wicket Takers</h3><div id="wicketLeaders"></div></div>
+        <div class="panel"><h3>Most Sixes</h3><div id="sixLeaders"></div></div>
+      </div>
+    </section>
+
+    <!-- ACADEMY -->
+    <section id="academy" class="page accent-orange">
+      <div class="hero-banner academy-hero"><div><div class="eyebrow">ACADEMY</div><h2>Build the cricket world</h2><p>Players, squads, team identity, lineups and stadium settings.</p></div><div class="academy-symbol">🧢</div></div>
+      <div class="tile-strip four">
+        <button class="menu-tile selected" data-nav="playerEditor"><b>PLAYER EDITOR</b><span>Create & manage players</span></button>
+        <button class="menu-tile" data-nav="teamEditor"><b>TEAM EDITOR</b><span>Squads & lineups</span></button>
+        <button class="menu-tile"><b>LOGO CREATOR</b><span>Planned</span></button>
+        <button class="menu-tile"><b>STADIUM CREATOR</b><span>Planned</span></button>
+      </div>
+    </section>
+
+    <!-- PLAYER EDITOR -->
+    <section id="playerEditor" class="page accent-orange">
+      <div class="editor-layout">
+        <div class="player-list-panel">
+          <div class="editor-tabs"><button class="active">All Players</button><button>My Players</button><button>Imported</button></div>
+          <div class="table-scroll"><table><thead><tr><th>ROLE</th><th>OVR</th><th>BAT</th><th>BOWL</th><th>NAME</th><th>TEAM</th></tr></thead><tbody id="playerRows"></tbody></table></div>
+          <button id="resetDemoData" class="white-action">RESET DEMO DATABASE</button>
+        </div>
+        <div class="model-preview">
+          <div class="css-player">
+            <div class="css-head"></div><div class="css-neck"></div><div class="css-shirt"></div>
+            <div class="css-arm left"></div><div class="css-arm right"></div><div class="css-leg left"></div><div class="css-leg right"></div>
+          </div>
+          <h2 id="previewPlayer">SELECT PLAYER</h2><p id="previewPlayerMeta">Role • Rating</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TEAM EDITOR -->
+    <section id="teamEditor" class="page accent-green">
+      <div class="editor-cards">
+        <button class="editor-card selected"><b>Identity</b><span>Name, colours, home</span></button>
+        <button class="editor-card"><b>Manage Squad</b><span>Add and remove players</span></button>
+        <button class="editor-card"><b>Manage Shirt Numbers</b><span>Player numbers</span></button>
+        <button class="editor-card"><b>Uniforms</b><span>Home and away kit</span></button>
+        <button class="editor-card"><b>Lineups</b><span>Default XI</span></button>
+        <button class="editor-card"><b>Home Stadiums</b><span>Ground assignment</span></button>
+      </div>
+      <div class="panel large"><h3>Teams</h3><div id="teamEditorList"></div></div>
+    </section>
+
+    <!-- QUICK MATCH / TEAM SELECT -->
+    <section id="quickMatch" class="page accent-blue">
+      <div class="team-select-scene">
+        <div class="team-side"><div class="big-crest green">A</div><h2 id="quickAName">Aurora XI</h2><div class="team-rating"><b id="quickARating">89</b><span>OVR</span></div></div>
+        <div class="team-select-center">
+          <div class="eyebrow">MEN'S T20</div>
+          <div class="controller-stack">HOST<br><span>AI vs AI</span></div>
+          <select id="quickA"></select><select id="quickB"></select>
+          <button id="quickProceed" class="white-action">PROCEED</button>
+        </div>
+        <div class="team-side"><div class="big-crest blue">N</div><h2 id="quickBName">Nova XI</h2><div class="team-rating"><b id="quickBRating">90</b><span>OVR</span></div></div>
+      </div>
+    </section>
+
+    <!-- PREMATCH -->
+    <section id="preMatch" class="page accent-blue">
+      <div class="prematch-scene">
+        <div class="captain cap-a"><div class="cap-head"></div><div class="cap-body"></div><div class="cap-arms"></div></div>
+        <div class="prematch-center">
+          <div class="format-mark">T20</div><h2>METRO CRICKET GROUND</h2><div class="date-line">ONLINE EXHIBITION</div>
+          <div class="conditions"><span>🟫 Medium</span><span>🏏 Standard</span><span>☁️ Light</span><span>24°</span><span>💨 4 km/h</span></div>
+          <div class="prematch-buttons">
+            <button id="openMatchRoom">MATCH ROOM</button><button data-nav="matchSettings" class="selected">MATCH SETTINGS</button><button data-nav="lineupScreen">EDIT LINEUP</button>
+          </div>
+        </div>
+        <div class="captain cap-b"><div class="cap-head"></div><div class="cap-body"></div><div class="cap-arms"></div></div>
+      </div>
+    </section>
+
+    <!-- MATCH SETTINGS -->
+    <section id="matchSettings" class="page accent-blue">
+      <div class="settings-scene">
+        <div class="settings-list">
+          <div class="settings-title">Match Settings</div>
+          <div class="setting selected"><label>Stadium</label><select><option>Metro Cricket Ground</option><option>Harbour Oval</option><option>National Stadium</option></select></div>
+          <div class="setting"><label>Match Type</label><select><option>T20</option></select></div>
+          <div class="setting"><label>Start Time</label><select><option>7:30 PM</option><option>3:00 PM</option></select></div>
+          <div class="setting"><label>AI Difficulty</label><select><option>Legend</option><option>Pro</option></select></div>
+          <div class="settings-divider">Pitch Settings</div>
+          <div class="setting"><label>Pitch Type</label><select id="pitchType"><option>Standard</option><option>Dry</option><option>Green</option></select></div>
+          <div class="setting"><label>Pitch Hardness</label><select id="pitchHard"><option>Medium</option><option>Hard</option><option>Soft</option></select></div>
+          <div class="setting"><label>Pitch Age</label><select id="pitchAge"><option>Day 1</option><option selected>Day 2</option><option>Day 3</option><option>Day 4</option></select></div>
+          <div class="setting"><label>Pitch Cracks</label><select id="pitchCracks"><option>None</option><option selected>Light</option><option>Medium</option><option>Heavy</option></select></div>
+          <div class="setting"><label>Pitch Wear Rate</label><select id="pitchWear"><option>Slow</option><option>Normal</option><option selected>Fast</option></select></div>
+        </div>
+        <div class="stadium-settings-art"><div class="format-mark">T20</div><div class="stadium-icon">🏟️</div><h2>METRO CRICKET GROUND</h2><div class="conditions"><span>🟫 Medium</span><span>🏏 Standard</span><span>☁️ Light</span><span>24°</span><span>💨 4 km/h</span></div></div>
+      </div>
+    </section>
+
+    <!-- LINEUP SCREEN -->
+    <section id="lineupScreen" class="page accent-blue">
+      <div class="lineup-layout">
+        <div class="lineup-team"><div class="lineup-head green" id="lineAHead">AURORA XI</div><div id="lineA"></div></div>
+        <div class="lineup-rating-card"><h3>PLAYER DETAILS</h3><div class="rating-item"><span>Batting Technique</span><b>86</b></div><div class="rating-item"><span>Front Foot</span><b>84</b></div><div class="rating-item"><span>Back Foot</span><b>82</b></div><div class="rating-item"><span>Bowling Control</span><b>76</b></div><div class="rating-item"><span>Fielding</span><b>88</b></div><div class="rating-item"><span>Physical</span><b>86</b></div></div>
+        <div class="lineup-team"><div class="lineup-head blue" id="lineBHead">NOVA XI</div><div id="lineB"></div></div>
+      </div>
+    </section>
+
+    <!-- MATCH ROOM -->
+    <section id="matchRoom" class="page accent-cyan">
+      <div class="screen-title"><div><div class="eyebrow">ONLINE MATCH ROOM</div><h2 id="roomTitle">Match Lobby</h2></div><div class="code-box"><span>MATCH CODE</span><b id="roomMatchCode">LOCAL01</b></div></div>
+      <div class="room-grid">
+        <div class="panel">
+          <h3 id="roomTeamA">Aurora XI</h3>
+          <div class="manager-status"><span>Manager</span><b id="managerAStatus">Not claimed</b></div>
+          <div class="manager-status"><span>Playing XI</span><b id="lineupAStatus">Not submitted</b></div>
+          <div id="roomAXI" class="mini-xi"></div>
+        </div>
+        <div class="room-center">
+          <div class="versus">VS</div>
+          <label>Match visibility</label><select id="matchVisibility"><option value="public">Public spectator link</option><option value="private">Private</option></select>
+          <label>Manager decision timeout</label><select id="roomDecisionTimer"><option value="15">15 seconds</option><option selected value="30">30 seconds</option><option value="60">60 seconds</option></select>
+          <button id="createOnlineRoom" class="white-action">CREATE / SYNC ONLINE ROOM</button>
+          <button id="hostStartMatch" class="primary-action">HOST: START MATCH</button>
+          <p id="roomHint" class="muted">Only the host starts the match. Managers control tactics but the AI plays cricket.</p>
+        </div>
+        <div class="panel">
+          <h3 id="roomTeamB">Nova XI</h3>
+          <div class="manager-status"><span>Manager</span><b id="managerBStatus">Not claimed</b></div>
+          <div class="manager-status"><span>Playing XI</span><b id="lineupBStatus">Not submitted</b></div>
+          <div id="roomBXI" class="mini-xi"></div>
+        </div>
+      </div>
+      <div class="share-panel">
+        <div><span>SPECTATOR LINK</span><input id="spectatorLink" readonly value="Create an online room first"></div>
+        <div><span>TEAM A MANAGER CODE</span><input id="managerCodeA" readonly value="—"></div>
+        <div><span>TEAM B MANAGER CODE</span><input id="managerCodeB" readonly value="—"></div>
+      </div>
+    </section>
+
+    <!-- MANAGER HUB -->
+    <section id="managerHub" class="page accent-green">
+      <div class="screen-title"><div><div class="eyebrow">TEAM MANAGER</div><h2>Manager Hub</h2></div></div>
+      <div class="manager-grid">
+        <div class="panel">
+          <h3>Claim a Team</h3><p class="muted">Sign in with your own private account, then enter the manager code sent by the tournament host.</p>
+          <label>Manager Code</label><input id="claimManagerCode" placeholder="e.g. AUR-7K2P">
+          <button id="claimManagerBtn" class="white-action">CLAIM TEAM</button>
+          <div class="demo-role">
+            <span>Local demo role</span>
+            <select id="localRole"><option value="host">Host / Administrator</option><option value="managerA">Team A Manager</option><option value="managerB">Team B Manager</option><option value="spectator">Spectator</option></select>
+          </div>
+        </div>
+        <div class="panel span2">
+          <h3 id="myManagedTeam">No team claimed</h3>
+          <div id="managerWorkspace" class="empty-state">Claim a manager code, or switch local demo role, to manage a team.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LIVE HUB -->
+    <section id="liveHub" class="page accent-cyan">
+      <div class="screen-title"><div><div class="eyebrow">LIVE CRICKET</div><h2>Watch a Match</h2><p class="muted">Spectators never receive team-control permissions.</p></div></div>
+      <div class="live-search">
+        <input id="watchCode" placeholder="Enter match code">
+        <button id="watchMatchBtn" class="white-action">WATCH</button>
+      </div>
+      <div class="panel large"><h3>Live / Recent Matches</h3><div id="liveMatchList"></div></div>
+    </section>
+
+    <!-- TOSS -->
+    <section id="toss" class="page accent-blue">
+      <div class="toss-scene">
+        <div class="toss-captain left"><div class="cap-head"></div><div class="cap-body"></div></div>
+        <div class="toss-middle"><div class="format-mark">TOSS</div><div class="coin">●</div><h2 id="tossResult">Calling...</h2><button id="tossContinue" class="white-action">CONTINUE</button></div>
+        <div class="toss-captain right"><div class="cap-head"></div><div class="cap-body"></div></div>
+        <div class="pitch-strip"><b>PITCH CONDITION</b><span>Pitch Hardness<br><strong>Medium</strong></span><span>Pitch Type<br><strong>Standard</strong></span><span>Pitch Age<br><strong>Day 2</strong></span><span>Pitch Cracks<br><strong>Light</strong></span><span>☀ 24°C</span><span>💨 4 km/h</span></div>
+      </div>
+    </section>
+
+    <!-- LIVE MATCH -->
+    <section id="liveMatch" class="page match-page">
+      <div class="match-main">
+        <div class="game-area">
+          <div id="introCard" class="player-intro hidden"><div class="intro-name" id="introName">N. RAY</div><div class="intro-role" id="introRole">RIGHT ARM FAST</div><div class="intro-stats"><span>Matches <b>112</b></span><span>Wickets <b>168</b></span><span>Average <b>22.8</b></span><span>Best <b>5/31</b></span></div></div>
+          <div id="threeStage"><canvas id="threeCanvas"></canvas><div id="eventSplash" class="event-splash">FOUR!</div></div>
+          <div class="score-hud">
+            <div class="batters"><div><b id="hudStriker">A. STONE</b><span id="hudStrikerRuns">0 0</span></div><div><b id="hudNon">M. VALE</b><span>0 0</span></div></div>
+            <div class="score-center"><b id="hudScore">0-0</b><span id="hudOvers">0.0 OVERS</span><small id="hudRate">RUN RATE 0.00</small></div>
+            <div class="bowler-hud"><b id="hudBowler">N. RAY</b><span id="hudBowlingFigures">0-0 (0.0)</span><div id="lastBalls" class="last-balls"></div></div>
+          </div>
+          <div class="match-actions"><button id="pauseBtn">PAUSE</button><button id="oneBallBtn">PLAY ONE BALL</button><select id="paceSelect"><option value="real">REAL-TIME (~1 HOUR)</option><option value="test">FAST TEST</option></select><div class="role-display">VIEW: <b id="activeRoleDisplay">HOST</b></div></div>
+        </div>
+        <aside class="commentary"><h3>COMMENTARY</h3><div id="commentaryFeed"></div></aside>
+      </div>
+    </section>
+
+    <!-- PAUSE MENU -->
+    <section id="pauseMenu" class="page pause-page">
+      <div class="pause-backdrop"></div>
+      <div class="pause-tiles">
+        <button data-nav="liveMatch" class="selected"><b>Resume</b><span>Return to game</span></button>
+        <button data-nav="scorecard"><b>Scorecard</b><span>Full scorecard</span></button>
+        <button><b>Simulate</b><span>Host only</span></button>
+        <button><b>Replay</b><span>Replay centre</span></button>
+        <button><b>Match Review</b><span>Analysis</span></button>
+        <button data-nav="tactics"><b>Tactics</b><span>Manage team decisions</span></button>
+        <button data-nav="pointsTable"><b>Points Table</b><span>Tournament standings</span></button>
+        <button data-nav="statistics"><b>Statistics</b><span>Player leaders</span></button>
+      </div>
+    </section>
+
+    <!-- TACTICS -->
+    <section id="tactics" class="page pause-page">
+      <div class="pause-backdrop"></div>
+      <div class="tactics-shell">
+        <div class="tactics-menu"><button id="tacticBowler" class="selected">Manage Bowlers</button><button id="tacticBatting">Batting Order</button><button id="tacticIntent">Team Intent</button></div>
+        <div id="tacticsPanel" class="tactics-table"></div>
+        <button data-nav="liveMatch" class="white-action">BACK</button>
+      </div>
+    </section>
+
+    <!-- SCORECARD -->
+    <section id="scorecard" class="page accent-blue"><div class="panel large"><h2>Scorecard</h2><div id="scorecardContent"></div></div></section>
+
+    <!-- CAREER -->
+    <section id="career" class="page accent-purple">
+      <div class="hero-banner career-hero"><div><div class="eyebrow">CAREER</div><h2>Your cricket history</h2><p>Cloud-saved results, manager wins, ties, Super Overs and records.</p></div><div class="hero-trophy">📈</div></div>
+      <div class="career-stats"><div><span>MATCHES</span><b id="careerMatches">0</b></div><div><span>TIES</span><b id="careerTies">0</b></div><div><span>SUPER OVERS</span><b id="careerSO">0</b></div><div><span>MANAGER WINS</span><b id="careerManagerWins">0</b></div></div>
+      <div class="panel large"><h3>Match Archive</h3><div id="careerHistory"></div></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="settings" class="page accent-purple">
+      <div class="panel large">
+        <h2>Simulation Settings</h2>
+        <div class="slider-setting"><div><b>Thriller Bias</b><span>Raises the chance that evenly matched T20s stay alive into the closing overs without predetermining every result.</span></div><input id="thrillBias" type="range" min="0" max="100" value="90"><strong id="thrillLabel">90</strong></div>
+        <div class="slider-setting"><div><b>Tie Bias</b><span>Small additional chance for very close games to finish level and go to a Super Over.</span></div><input id="tieBias" type="range" min="0" max="15" value="5"><strong id="tieLabel">5%</strong></div>
+        <div class="slider-setting"><div><b>Manager Timeout</b><span>If a manager does not choose in time, AI makes a legal decision so the match never freezes.</span></div><select id="defaultManagerTimeout"><option value="15">15 sec</option><option selected value="30">30 sec</option><option value="60">60 sec</option></select><strong></strong></div>
+        <div class="slider-setting"><div><b>Manager Control</b><span>Managers choose next batter and next bowler. AI still bats, bowls and fields.</span></div><select id="managerControl"><option value="on">On</option><option value="off">Off</option></select><strong></strong></div>
+      </div>
+    </section>
+
+    <!-- ACCOUNT -->
+    <section id="account" class="page accent-cyan">
+      <div class="account-grid">
+        <div class="panel">
+          <h2>Private User Account</h2><p class="muted">Every manager or spectator creates their own account. Nobody needs your login details.</p>
+          <div id="signedOutBox">
+            <label>Email</label><input id="authEmail" type="email" placeholder="you@example.com">
+            <label>Password</label><input id="authPass" type="password" placeholder="Minimum 6 characters">
+            <div class="button-pair"><button id="signUpBtn">CREATE ACCOUNT</button><button id="signInBtn">SIGN IN</button></div>
+          </div>
+          <div id="signedInBox" class="hidden"><div class="cloud-ok">☁ <b id="signedEmail">Signed in</b><span>Your private account is connected.</span></div><div class="button-pair"><button id="syncNowBtn">SYNC NOW</button><button id="signOutBtn">SIGN OUT</button></div></div>
+        </div>
+        <div class="panel">
+          <h2>Administrator Cloud Setup</h2><p class="muted">One-time setup for the website owner.</p>
+          <label>Supabase Project URL</label><input id="supabaseUrl" placeholder="https://xxxx.supabase.co">
+          <label>Anon / Publishable Key</label><textarea id="supabaseKey" placeholder="Public anon or publishable key"></textarea>
+          <button id="saveCloudConfig" class="white-action">SAVE CLOUD CONFIG</button>
+          <p class="warning-note">Never put a service-role/secret key in the website.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer><span>SELECT</span><span>BACK</span><span id="footerRole">ROLE: HOST</span><span>ORIGINAL UI • REFERENCE-DRIVEN DESIGN</span></footer>
+</div>
+
+<div id="decisionModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-top"><div><span>MANAGER DECISION</span><h2 id="decisionTitle">Choose</h2></div><div class="countdown"><b id="decisionCountdown">30</b><span>SEC</span></div></div>
+    <p id="decisionHint"></p><div id="decisionChoices" class="decision-choices"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
