@@ -415,6 +415,19 @@
   </div>
 </div>
 
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var btn = document.getElementById("enterGame");
+  var boot = document.getElementById("boot");
+  var app = document.getElementById("app");
+  if (btn && boot && app) {
+    btn.addEventListener("click", function () {
+      boot.classList.remove("active");
+      app.classList.remove("hidden");
+    });
+  }
+});
+</script>
 <script src="config.js"></script>
 <script type="module" src="app.js"></script>
 </body>
