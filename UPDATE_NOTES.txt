@@ -1,19 +1,25 @@
-CRICKET UNIVERSE V1.3.1 AUTH/ROLE HOTFIX
+CRICKET UNIVERSE V1.3.2 — SERVER ACTIVATION HOTFIX
+
+Why the match could still stop when Chrome closed:
+The Supabase Cron job can be active, but each individual match must also have:
+  state.engineMode = "server-v1"
+  state.engineActive = true
+The previous frontend could fail to publish those flags if the Admin session was
+temporarily treated as Spectator.
 
 Fixes:
-- Supabase access tokens are automatically refreshed.
-- HTTP 401 cloud calls retry once after refreshing the session.
-- Administrator role is re-verified through the protected is_game_admin() RPC.
-- Own user_roles row is also checked as a secondary role source.
-- Signed-in users show 'Checking account role…' during startup instead of being
-  incorrectly displayed as Spectator.
-- A failed network/auth lookup shows 'Cloud role unavailable' rather than
-  incorrectly demoting the UI to Spectator.
-- Session/role refresh runs periodically and whenever the browser becomes visible.
-- Existing V1.3 server-auto match engine and audio remain unchanged.
+- Verified Supabase admin role can start/publish matches even if stale local state is wrong.
+- Server activation errors are no longer silently ignored.
+- After the toss, the game writes server-v1 + engineActive=true to Supabase.
+- The game immediately reads the match row back and verifies the server accepted it.
+- Only after verification does it display:
+  SERVER AUTO ACTIVE • SAFE TO CLOSE/BACKGROUND CHROME
+- If activation fails, the UI explicitly reports failure.
 
-Upload to GitHub:
+Upload:
 - app.js
 - index.html
-(styles.css is included but unchanged.)
-No new SQL is required.
+No new SQL is required if server_engine_v13.sql already ran successfully.
+
+IMPORTANT:
+Create a NEW online match after installing this hotfix.

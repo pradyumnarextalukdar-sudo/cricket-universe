@@ -443,20 +443,80 @@ async function resumeRestoredMatch(){
 function renderCommentaryFromState(){if(!$("commentaryFeed")||!match)return;$("commentaryFeed").innerHTML=(match.logs||[]).map(x=>`<div class="com ${esc(x.cls||"")}">${esc(x.text)}</div>`).join("");$("commentaryFeed").scrollTop=$("commentaryFeed").scrollHeight}
 
 $("hostStartMatch").addEventListener("click",async()=>{
-  const r=ensureLocalRoom();if(state.localRole!=="host")return alert("Only the host can start the match.");
+  const r=ensureLocalRoom();if(state.localRole!=="host"&&serverRole!=="admin")return alert("Only the Administrator/Host can start the match.");
   if(!r.lineupA||!r.lineupB){if(!confirm("One or both managers have not submitted a Playing XI. Use default XIs and start anyway?"))return;if(!r.lineupA)r.lineupA={xi:T(r.teamA).defaultXI,battingOrder:T(r.teamA).defaultXI,captain:T(r.teamA).defaultXI[0],wicketkeeper:T(r.teamA).defaultXI[4]};if(!r.lineupB)r.lineupB={xi:T(r.teamB).defaultXI,battingOrder:T(r.teamB).defaultXI,captain:T(r.teamB).defaultXI[0],wicketkeeper:T(r.teamB).defaultXI[4]}}
-  r.decisionTimer=ONLINE_MANAGER_TIMEOUT;save();prepareMatch(r);if(r.cloudId&&session)await api("/rest/v1/matches?id=eq."+r.cloudId,{method:"PATCH",body:JSON.stringify({status:"live",started_at:nowISO(),decision_timeout:ONLINE_MANAGER_TIMEOUT,state:serializeMatch(),updated_at:nowISO()})}).catch(()=>{});persistActiveMatchLocal();nav("toss");setTimeout(()=>{$("tossResult").textContent=(Math.random()<.5?T(r.teamA).name:T(r.teamB).name)+" won the toss and elected to bowl."},900)
+  r.decisionTimer=ONLINE_MANAGER_TIMEOUT;save();prepareMatch(r);if(r.cloudId&&session){try{await api("/rest/v1/matches?id=eq."+r.cloudId,{method:"PATCH",body:JSON.stringify({status:"live",started_at:nowISO(),decision_timeout:ONLINE_MANAGER_TIMEOUT,state:serializeMatch(),updated_at:nowISO()})})}catch(e){return alert("Could not prepare the online match: "+e.message)}}persistActiveMatchLocal();nav("toss");setTimeout(()=>{$("tossResult").textContent=(Math.random()<.5?T(r.teamA).name:T(r.teamB).name)+" won the toss and elected to bowl."},900)
 });
 $("tossContinue").addEventListener("click",async()=>{
-  nav("liveMatch");showPlayerIntro(match.bowlingTeam);updateHUD();
-  if(!(match.logs||[]).length)addCom(`${match.battingTeam.name} begin the innings.`,"system");
+  nav("liveMatch");
+  showPlayerIntro(match.bowlingTeam);
+  updateHUD();
+
+  if(!(match.logs||[]).length)
+    addCom(`${match.battingTeam.name} begin the innings.`,"system");
+
   if(match.room?.cloudId&&session){
-    match.engineMode="server-v1";match.engineActive=true;match.nextDeliveryAt=nowISO();
-    await publishMatchState();
-    setAutoStatus("SERVER AUTO • MATCH CONTINUES EVEN IF THIS TAB IS BACKGROUNDED");
-    startSpectatorPolling();
+    if(serverRole!=="admin"&&state.localRole!=="host"){
+      setAutoStatus("SERVER ENGINE NOT STARTED • ADMIN VERIFICATION REQUIRED");
+      return alert("Your Administrator role is not verified yet. Reopen the game or sign in again, then start a new match.");
+    }
+
+    try{
+      match.engineMode="server-v1";
+      match.engineActive=true;
+      match.nextDeliveryAt=nowISO();
+
+      const authoritativeState=serializeMatch();
+
+      await api("/rest/v1/matches?id=eq."+match.room.cloudId,{
+        method:"PATCH",
+        body:JSON.stringify({
+          status:"live",
+          state:authoritativeState,
+          decision_timeout:ONLINE_MANAGER_TIMEOUT,
+          started_at:nowISO(),
+          updated_at:nowISO()
+        })
+      });
+
+      // Read the row back. Do not claim success unless Supabase actually stored
+      // the server-engine activation flags.
+      const verify=await api(
+        "/rest/v1/matches?id=eq."
+        +match.room.cloudId
+        +"&select=id,status,state"
+      );
+
+      const remote=verify?.[0];
+      const active=
+        remote?.status==="live"
+        && remote?.state?.engineMode==="server-v1"
+        && remote?.state?.engineActive===true;
+
+      if(!active){
+        match.engineActive=false;
+        setAutoStatus("SERVER ENGINE ACTIVATION FAILED");
+        return alert("The match was not activated on the server. Please do not close Chrome yet. Send me a screenshot.");
+      }
+
+      state.localRole="host";
+      localStorage.setItem(SAVE,JSON.stringify(state));
+      persistActiveMatchLocal();
+
+      setAutoStatus("SERVER AUTO ACTIVE • SAFE TO CLOSE/BACKGROUND CHROME");
+      startSpectatorPolling();
+
+    }catch(e){
+      match.engineActive=false;
+      setAutoStatus("SERVER ENGINE ACTIVATION FAILED");
+      alert("Server engine could not start: "+e.message);
+    }
+
   }else{
-    match.engineMode="browser";match.engineActive=true;await publishMatchState();startAutoMatchLoop()
+    match.engineMode="browser";
+    match.engineActive=true;
+    await publishMatchState();
+    startAutoMatchLoop();
   }
 });
 
@@ -563,7 +623,20 @@ function restoreMatchObject(room,s){
   if(!restored.order.length){const sub=room.lineupA&&battingTeam.id===room.teamA?room.lineupA:room.lineupB&&battingTeam.id===room.teamB?room.lineupB:null;restored.order=((sub?.battingOrder||sub?.xi||battingTeam.defaultXI)||[]).map(P).filter(Boolean)}
   restored.striker=restored.striker||restored.order[0];restored.non=restored.non||restored.order[1];return restored
 }
-async function publishMatchState(){persistActiveMatchLocal();if(match?.room?.cloudId&&session&&state.localRole==="host")await api("/rest/v1/matches?id=eq."+match.room.cloudId,{method:"PATCH",body:JSON.stringify({state:serializeMatch(),decision_timeout:ONLINE_MANAGER_TIMEOUT,updated_at:nowISO()})}).catch(()=>{})}
+async function publishMatchState(){
+  persistActiveMatchLocal();
+  const canHost=state.localRole==="host"||serverRole==="admin";
+  if(match?.room?.cloudId&&session&&canHost){
+    await api("/rest/v1/matches?id=eq."+match.room.cloudId,{
+      method:"PATCH",
+      body:JSON.stringify({
+        state:serializeMatch(),
+        decision_timeout:ONLINE_MANAGER_TIMEOUT,
+        updated_at:nowISO()
+      })
+    });
+  }
+}
 
 async function publishBallEvent(o,no){if(match?.room?.cloudId&&session&&state.localRole==="host")await api("/rest/v1/match_events",{method:"POST",body:JSON.stringify({match_id:match.room.cloudId,ball_no:no,event_type:o.wicket?"wicket":o.runs===6?"six":o.runs===4?"four":"ball",payload:{runs:o.runs||0,wicket:!!o.wicket,score:match.score,wickets:match.wickets,balls:match.balls,text:match.logs.at(-1)?.text}})}).catch(()=>{})}
 
