@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#05070a">
 <title>Cricket Universe — Manager Online Alpha</title>
-<link rel="stylesheet" href="styles.css?v=20260823-hq-v4">
+<link rel="stylesheet" href="styles.css?v=20260823-reference-v5">
 </head>
 <body>
 <div id="boot" class="boot active">
@@ -329,14 +329,49 @@
       <div class="match-main">
         <div class="game-area">
           <div id="introCard" class="player-intro hidden"><div class="intro-name" id="introName">N. RAY</div><div class="intro-role" id="introRole">RIGHT ARM FAST</div><div class="intro-stats"><span>Matches <b>112</b></span><span>Wickets <b>168</b></span><span>Average <b>22.8</b></span><span>Best <b>5/31</b></span></div></div>
-          <div id="threeStage" class="hq-stage">
+          <div id="threeStage" class="hq-stage reference-match-stage">
             <canvas id="threeCanvas"></canvas>
-            <div id="graphicsStatus" class="graphics-status">HIGH-FIDELITY 3D • LOADING</div>
-            <div id="broadcastCamBadge" class="camera-badge">BROADCAST • BOWLER END</div>
-            <div id="stadiumAtmosphere" class="stadium-atmosphere">● LIVE • CRICKET UNIVERSE ARENA</div>
+
+            <div class="ref-scoreboard">
+              <div class="ref-team ref-team-bat">
+                <span id="refBatTeam">BATTING XI</span>
+                <b id="refBatScore">0/0</b>
+              </div>
+              <div class="ref-score-mid">
+                <small id="refOver">0.0 OV</small>
+                <strong id="refNeed">LIVE MATCH</strong>
+                <div id="refBallDots" class="ref-ball-dots"></div>
+              </div>
+              <div class="ref-team ref-team-bowl">
+                <span id="refBowlTeam">BOWLING XI</span>
+                <b id="refBowlerMini">BOWLER</b>
+              </div>
+            </div>
+
+            <div class="ref-bowler-card">
+              <div class="ref-avatar">CU</div>
+              <div>
+                <small>BOWLER</small>
+                <b id="refBowlerName">—</b>
+                <span id="refBowlerFigures">0-0</span>
+              </div>
+            </div>
+
+            <div id="refResultFx" class="ref-result-fx">6</div>
+
+            <div class="ref-bottom-controls">
+              <button id="refPauseBtn" type="button" aria-label="Pause">Ⅱ</button>
+              <div class="ref-delivery-rail">
+                <div id="refDeliveryRail" class="ref-delivery-rail-track"></div>
+              </div>
+              <div class="ref-replay-pill">BROADCAST</div>
+            </div>
+
+            <div id="graphicsStatus" class="graphics-status">REFERENCE 3D • LOADING</div>
+            <div id="broadcastCamBadge" class="camera-badge">BOWLER END</div>
             <div id="eventSplash" class="event-splash">FOUR!</div>
           </div>
-          <div class="score-hud">
+          <div class="score-hud legacy-score-hud">
             <div class="batters"><div><b id="hudStriker">A. STONE</b><span id="hudStrikerRuns">0 0</span></div><div><b id="hudNon">M. VALE</b><span>0 0</span></div></div>
             <div class="score-center"><b id="hudScore">0-0</b><span id="hudOvers">0.0 OVERS</span><small id="hudRate">RUN RATE 0.00</small></div>
             <div class="bowler-hud"><b id="hudBowler">N. RAY</b><span id="hudBowlingFigures">0-0 (0.0)</span><div id="lastBalls" class="last-balls"></div></div>
@@ -510,6 +545,6 @@ document.addEventListener("DOMContentLoaded", function () {
 }
 </script>
 
-<script type="module" src="app.js?v=20260823-hq-v402-stableui"></script>
+<script type="module" src="app.js?v=20260823-reference-v5"></script>
 </body>
 </html>

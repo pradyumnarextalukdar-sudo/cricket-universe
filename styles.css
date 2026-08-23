@@ -209,3 +209,36 @@ html,body{margin:0;min-height:100%;background:#000;color:var(--text);font-family
     font-size:7px;
   }
 }
+
+
+/* CRICKET UNIVERSE V5 — reference-video presentation */
+.reference-match-stage{min-height:620px!important;background:#19b7df!important;border-radius:12px;box-shadow:inset 0 0 80px rgba(0,0,0,.12),0 20px 48px rgba(0,0,0,.38)}
+.reference-match-stage canvas{min-height:620px!important}
+.legacy-score-hud{height:48px;opacity:.72;border-bottom:0}
+.ref-scoreboard{position:absolute;left:50%;top:13px;transform:translateX(-50%);width:min(680px,76%);min-height:76px;z-index:12;display:grid;grid-template-columns:1fr 1.05fr 1fr;color:#fff;filter:drop-shadow(0 5px 8px rgba(0,0,0,.42));pointer-events:none}
+.ref-team,.ref-score-mid{min-width:0;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:7px 13px}
+.ref-team-bat{background:linear-gradient(135deg,#139fbc,#1748a8);clip-path:polygon(6% 0,100% 0,91% 100%,0 100%);border-top:3px solid #51e1fb}
+.ref-team-bowl{background:linear-gradient(225deg,#f15a56,#9d204b);clip-path:polygon(0 0,94% 0,100% 100%,9% 100%);border-top:3px solid #ff958e}
+.ref-team span{font-size:9px;font-weight:950;letter-spacing:.055em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ref-team b{font-size:20px;line-height:1.05;margin-top:3px}
+.ref-score-mid{margin:7px -10px 0;background:linear-gradient(180deg,#382977,#171746);clip-path:polygon(9% 0,91% 0,100% 100%,0 100%);border-top:3px solid #8e76ff;z-index:2}
+.ref-score-mid small{color:#b9c1ff;font-size:9px;font-weight:900}
+.ref-score-mid strong{font-size:12px;margin:3px 0 5px;color:#fff5ba}
+.ref-ball-dots{display:flex;gap:5px}
+.ref-ball-dots i{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;border:2px solid #8d99b6;background:#101423;color:#fff;font-size:8px;font-style:normal;font-weight:1000}
+.ref-ball-dots i.used{border-color:#d4d9e5}.ref-ball-dots i.four{background:#14a870;border-color:#5af2b4}.ref-ball-dots i.six{background:#7253e8;border-color:#c6b9ff}.ref-ball-dots i.wicket{background:#b32442;border-color:#ff8096}
+.ref-bowler-card{position:absolute;z-index:11;left:13px;bottom:67px;display:flex;align-items:center;gap:8px;padding:7px 11px 7px 7px;border-radius:10px;border:1px solid rgba(255,255,255,.45);background:linear-gradient(135deg,rgba(27,43,60,.90),rgba(24,28,39,.82));color:#fff;box-shadow:0 7px 22px rgba(0,0,0,.32);backdrop-filter:blur(6px);pointer-events:none}
+.ref-avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#53d5ff,#2353d5);border:3px solid #92eeff;font-size:11px;font-weight:1000}
+.ref-bowler-card small{display:block;color:#9fdfff;font-size:7px;font-weight:900}.ref-bowler-card b{display:block;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}.ref-bowler-card span{font-size:9px;color:#cfd8df}
+.ref-bottom-controls{position:absolute;z-index:13;left:12px;right:12px;bottom:10px;display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center}
+#refPauseBtn{width:48px;height:42px;border-radius:9px;border:2px solid rgba(255,255,255,.66);color:#fff;background:linear-gradient(#39b9df,#16769d);font-size:20px;font-weight:1000;box-shadow:0 4px 8px rgba(0,0,0,.32)}
+.ref-delivery-rail{height:22px;border-radius:12px;padding:2px 9px;background:rgba(12,29,54,.80);border:1px solid rgba(131,200,255,.65);box-shadow:inset 0 0 6px rgba(58,136,255,.48);overflow:hidden}
+.ref-delivery-rail-track{height:100%;display:flex;justify-content:flex-end;align-items:center;gap:5px}
+.ref-delivery-rail-track i{min-width:18px;height:18px;padding:0 3px;border-radius:9px;display:grid;place-items:center;background:#1b6aa1;color:#fff;font-size:8px;font-style:normal;font-weight:1000;border:1px solid #7ac9ff}
+.ref-delivery-rail-track i.four{background:#139065}.ref-delivery-rail-track i.six{background:#6844d5}.ref-delivery-rail-track i.wicket{background:#aa2041}
+.ref-replay-pill{padding:8px 11px;border-radius:7px;background:linear-gradient(#f15f6c,#b72942);border:2px solid rgba(255,255,255,.62);color:#fff;font-size:9px;font-weight:1000;box-shadow:0 4px 8px rgba(0,0,0,.30)}
+.ref-result-fx{position:absolute;z-index:20;left:50%;top:43%;transform:translate(-50%,-50%) scale(.3) rotate(-9deg);opacity:0;pointer-events:none;font-size:170px;line-height:1;font-weight:1000;font-family:Arial Black,Arial,sans-serif;color:#fff;-webkit-text-stroke:5px #1f3652;text-shadow:0 8px 0 #29416a,0 15px 30px rgba(0,0,0,.42)}
+.ref-result-fx.show{animation:cuRefResultPop 1.7s cubic-bezier(.16,.9,.23,1) both}.ref-result-fx.six{color:#e9fbff}.ref-result-fx.four{color:#fff3ac}.ref-result-fx.wicket{font-size:125px;color:#ff697f;-webkit-text-stroke-color:#6c1427}
+@keyframes cuRefResultPop{0%{opacity:0;transform:translate(-50%,-50%) scale(.25) rotate(-9deg)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.15) rotate(4deg)}34%{transform:translate(-50%,-50%) scale(.96) rotate(-2deg)}72%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(0)}100%{opacity:0;transform:translate(-50%,-54%) scale(1.10)}}
+.reference-match-stage .graphics-status{top:auto;bottom:58px;left:auto;right:12px;font-size:7px;opacity:.5}.reference-match-stage .camera-badge{top:96px;right:12px;background:rgba(12,20,38,.60);border-radius:5px}.reference-match-stage .event-splash{display:none}
+@media(max-width:700px){.reference-match-stage,.reference-match-stage canvas{min-height:500px!important}.ref-scoreboard{top:7px;width:94%;min-height:63px}.ref-team{padding:5px 7px}.ref-team span{font-size:7px}.ref-team b{font-size:16px}.ref-score-mid strong{font-size:9px}.ref-score-mid small{font-size:7px}.ref-ball-dots{gap:3px}.ref-ball-dots i{width:14px;height:14px;font-size:6px;border-width:1px}.ref-bowler-card{bottom:58px;left:7px;transform:scale(.86);transform-origin:left bottom}.ref-bottom-controls{left:6px;right:6px;bottom:6px;grid-template-columns:40px 1fr auto;gap:6px}#refPauseBtn{width:40px;height:36px;font-size:16px}.ref-replay-pill{padding:7px 7px;font-size:7px}.ref-result-fx{font-size:120px}.ref-result-fx.wicket{font-size:82px}.legacy-score-hud{display:none}}

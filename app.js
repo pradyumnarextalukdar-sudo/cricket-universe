@@ -635,9 +635,77 @@ function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
 function setAutoStatus(text){if($("autoMatchStatus"))$("autoMatchStatus").textContent=text}
 async function waitAutoGap(){let left=Math.ceil(AUTO_BALL_GAP_MS/1000);while(left>0&&match&&!match.completed){if(paused){setAutoStatus("PAUSED");await sleep(250);continue}setAutoStatus(`AUTO • NEXT DELIVERY IN ${left}s`);await sleep(1000);if(!paused)left--}}
 function addCom(text,cls=""){match?.logs.push({text,cls,at:nowISO()});const e=$("commentaryFeed");if(e){e.innerHTML+=`<div class="com ${cls}">${esc(text)}</div>`;e.scrollTop=e.scrollHeight}if(match?.engineMode!=="server-v1"){playCricketSfx(cls||"ball");if(cls!=="system")setTimeout(()=>speakCommentary(text),430)}}
-function splash(text){$("eventSplash").textContent=text;$("eventSplash").classList.add("show");setTimeout(()=>$("eventSplash").classList.remove("show"),1100)}
+function splash(text){
+  $("eventSplash").textContent=text;
+  $("eventSplash").classList.add("show");
+  setTimeout(()=>$("eventSplash").classList.remove("show"),1100);
+  const fx=$("refResultFx");
+  if(fx){
+    const raw=String(text||"").toUpperCase();
+    fx.textContent=raw.includes("SIX")?"6":raw.includes("FOUR")?"4":raw.includes("WICKET")?"W":"";
+    fx.className="ref-result-fx";
+    if(raw.includes("SIX"))fx.classList.add("six");
+    else if(raw.includes("FOUR"))fx.classList.add("four");
+    else if(raw.includes("WICKET"))fx.classList.add("wicket");
+    if(fx.textContent){
+      void fx.offsetWidth;
+      fx.classList.add("show");
+      setTimeout(()=>fx.classList.remove("show"),1800);
+    }
+  }
+}
 function stat(id){return state.playerStats[id]||(state.playerStats[id]={matches:0,runs:0,balls:0,wickets:0,conceded:0,fours:0,sixes:0,outs:0})}
-function updateHUD(){if(!match)return;$("hudScore").textContent=`${match.score}-${match.wickets}`;$("hudOvers").textContent=`${Math.floor(match.balls/6)}.${match.balls%6} OVERS`;$("hudRate").textContent=`RUN RATE ${match.balls?(match.score/(match.balls/6)).toFixed(2):"0.00"}`;$("hudStriker").textContent=(match.striker?.name||"—").toUpperCase();$("hudNon").textContent=(match.non?.name||"—").toUpperCase();$("hudStrikerRuns").textContent=`${match.batterRuns[match.striker?.id]||0} ${match.batterBalls[match.striker?.id]||0}`;$("hudBowler").textContent=(match.currentBowler?.name||"—").toUpperCase();const bid=match.currentBowler?.id;$("hudBowlingFigures").textContent=bid?`${match.bowlerRuns[bid]||0}-${0} (${((match.bowlerBalls[bid]||0)/6).toFixed(1)})`:"";$("lastBalls").innerHTML=match.lastBalls.slice(-6).map(x=>`<i>${x}</i>`).join("");$("activeRoleDisplay").textContent=state.localRole.toUpperCase();$("footerRole").textContent="ROLE: "+state.localRole.toUpperCase();renderManagerLiveDock()}
+function updateHUD(){
+  if(!match)return;
+  $("hudScore").textContent=`${match.score}-${match.wickets}`;
+  $("hudOvers").textContent=`${Math.floor(match.balls/6)}.${match.balls%6} OVERS`;
+  $("hudRate").textContent=`RUN RATE ${match.balls?(match.score/(match.balls/6)).toFixed(2):"0.00"}`;
+  $("hudStriker").textContent=(match.striker?.name||"—").toUpperCase();
+  $("hudNon").textContent=(match.non?.name||"—").toUpperCase();
+  $("hudStrikerRuns").textContent=`${match.batterRuns[match.striker?.id]||0} ${match.batterBalls[match.striker?.id]||0}`;
+  $("hudBowler").textContent=(match.currentBowler?.name||"—").toUpperCase();
+
+  const bid=match.currentBowler?.id;
+  const figures=bid?`${match.bowlerRuns[bid]||0}-${0} (${((match.bowlerBalls[bid]||0)/6).toFixed(1)})`:"";
+  $("hudBowlingFigures").textContent=figures;
+  $("lastBalls").innerHTML=match.lastBalls.slice(-6).map(x=>`<i>${x}</i>`).join("");
+
+  $("activeRoleDisplay").textContent=state.localRole.toUpperCase();
+  $("footerRole").textContent="ROLE: "+state.localRole.toUpperCase();
+
+  if($("refBatTeam"))$("refBatTeam").textContent=(match.battingTeam?.name||"BATTING XI").toUpperCase();
+  if($("refBowlTeam"))$("refBowlTeam").textContent=(match.bowlingTeam?.name||"BOWLING XI").toUpperCase();
+  if($("refBatScore"))$("refBatScore").textContent=`${match.score}/${match.wickets}`;
+  if($("refOver"))$("refOver").textContent=`${Math.floor(match.balls/6)}.${match.balls%6} OV`;
+  if($("refBowlerName"))$("refBowlerName").textContent=(match.currentBowler?.name||"—").toUpperCase();
+  if($("refBowlerMini"))$("refBowlerMini").textContent=(match.currentBowler?.name||"BOWLER").toUpperCase();
+  if($("refBowlerFigures"))$("refBowlerFigures").textContent=figures||"0-0";
+
+  let needText="LIVE MATCH";
+  if(match.innings===2&&match.target){
+    const need=Math.max(0,match.target-match.score);
+    const ballsLeft=Math.max(0,120-match.balls);
+    needText=need>0?`NEED ${need} OFF ${ballsLeft}`:"TARGET REACHED";
+  }
+  if($("refNeed"))$("refNeed").textContent=needText;
+
+  const last=(match.lastBalls||[]).slice(-6);
+  if($("refBallDots")){
+    $("refBallDots").innerHTML=Array.from({length:6},(_,i)=>{
+      const val=last[i];
+      const cls=val==="W"?"wicket":val==="6"?"six":val==="4"?"four":val!=null?"used":"";
+      return `<i class="${cls}">${val??""}</i>`;
+    }).join("");
+  }
+  if($("refDeliveryRail")){
+    const history=(match.lastBalls||[]).slice(-12);
+    $("refDeliveryRail").innerHTML=history.map(v=>{
+      const cls=v==="W"?"wicket":v==="6"?"six":v==="4"?"four":"";
+      return `<i class="${cls}">${esc(v)}</i>`;
+    }).join("");
+  }
+  renderManagerLiveDock();
+}
 async function ensureCurrentBowler(){
   if(!match||match.currentBowler||match.completed)return;if(state.localRole!=="host")return;
   setAutoStatus("WAITING FOR BOWLING MANAGER • UP TO 60s");
@@ -1296,7 +1364,7 @@ function cuCameraMove(pos,look,ms=650){
 function cuMakeSeatMesh(count){
   const geo=new THREE.BoxGeometry(.34,.16,.34);
   const mat=new THREE.MeshStandardMaterial({
-    color:0x36506b,
+    color:0x1e4a78,
     roughness:.75
   });
   return new THREE.InstancedMesh(geo,mat,count);
@@ -1526,6 +1594,36 @@ function cuBuildStadium(scene){
     stadium.add(bank);
   }
 
+  const flagPoleMat=new THREE.MeshStandardMaterial({color:0xe8edf1,metalness:.5,roughness:.42});
+  const flagMat=new THREE.MeshStandardMaterial({color:0xff8c19,roughness:.55,side:THREE.DoubleSide});
+  for(let i=0;i<18;i++){
+    const a=i/18*Math.PI*2;
+    const r=58.4;
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,1.55,6),flagPoleMat);
+    pole.position.set(Math.cos(a)*r,14.65,Math.sin(a)*r);
+    stadium.add(pole);
+    const flag=new THREE.Mesh(new THREE.PlaneGeometry(.72,.38),flagMat);
+    flag.position.set(Math.cos(a)*r,15.23,Math.sin(a)*r);
+    flag.rotation.y=-a+Math.PI/2;
+    flag.position.x+=Math.cos(a)*.28;
+    flag.position.z+=Math.sin(a)*.28;
+    stadium.add(flag);
+  }
+
+  const cloudMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,transparent:true,opacity:.92});
+  const cloudPositions=[[-36,28,-86],[-10,31,-91],[25,28,-88],[48,30,-72]];
+  for(const c of cloudPositions){
+    const cloud=new THREE.Group();
+    for(let j=0;j<6;j++){
+      const puff=new THREE.Mesh(new THREE.SphereGeometry(3.8+(j%3)*1.1,16,12),cloudMat);
+      puff.scale.set(1.5,.72,1);
+      puff.position.set((j-2.5)*3.2,Math.sin(j)*1.1,(j%2)*1.4);
+      cloud.add(puff);
+    }
+    cloud.position.set(c[0],c[1],c[2]);
+    stadium.add(cloud);
+  }
+
   return stadium;
 }
 
@@ -1562,15 +1660,15 @@ function initThree(){
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=1.10;
+  renderer.toneMappingExposure=1.28;
 
   const scene=new THREE.Scene();
-  scene.background=new THREE.Color(0x84afc8);
-  scene.fog=new THREE.Fog(0x84a6b8,70,180);
+  scene.background=new THREE.Color(0x17b8e3);
+  scene.fog=new THREE.Fog(0x65c8df,78,185);
 
-  const camera=new THREE.PerspectiveCamera(35,1,.1,250);
-  camera.position.set(0,8.2,30.5);
-  camera.lookAt(0,1,-2.4);
+  const camera=new THREE.PerspectiveCamera(39,1,.1,250);
+  camera.position.set(0,5.35,24.6);
+  camera.lookAt(0,1.05,-3.2);
 
   scene.add(new THREE.HemisphereLight(0xf2fbff,0x263c25,1.65));
 
@@ -1593,7 +1691,7 @@ function initThree(){
   const ground=new THREE.Mesh(
     new THREE.CircleGeometry(46,160),
     new THREE.MeshStandardMaterial({
-      color:0x3e934d,
+      color:0x42b84f,
       roughness:.96
     })
   );
@@ -1842,14 +1940,10 @@ async function cuRunBatters(runs){
 }
 
 function cuFieldCameraForTarget(target,isSix,isFour){
-  const d=target.clone().setY(0).normalize();
-  const side=new THREE.Vector3(-d.z,0,d.x);
-  const pos=target.clone()
-    .multiplyScalar(.42)
-    .add(side.multiplyScalar(target.x>=0?7:-7));
-  pos.y=isSix?11:isFour?7.5:5.5;
-  pos.z+=5;
-  return pos;
+  const right=target.x>=0;
+  if(isSix)return new THREE.Vector3(right?24:-24,8.6,target.z>0?17:-17);
+  if(isFour)return new THREE.Vector3(right?19:-19,5.3,target.z>0?14:-14);
+  return new THREE.Vector3(right?15:-15,5.8,10.5);
 }
 
 async function animateDelivery(o){
@@ -1892,10 +1986,10 @@ async function animateDelivery(o){
   t.ball.visible=true;
   t.ball.position.set(0,1.55,13.8);
 
-  cuCameraLabel("BROADCAST • BOWLER END");
+  cuCameraLabel("BOWLER END");
   await cuCameraMove(
-    new THREE.Vector3(0,8.2,30.5),
-    new THREE.Vector3(0,1,-2.4),
+    new THREE.Vector3(0,5.35,24.6),
+    new THREE.Vector3(0,1.05,-3.2),
     350
   );
 
@@ -1976,7 +2070,7 @@ async function animateDelivery(o){
   });
 
   if(o.wicket){
-    cuCameraLabel("WICKET • CLOSE CAMERA");
+    cuCameraLabel("WICKET CAM");
 
     await Promise.all([
       tweenPosition(t.ball,new THREE.Vector3(0,.45,-8.24),360),
@@ -2030,9 +2124,9 @@ async function animateDelivery(o){
     );
 
     cuCameraLabel(
-      isSix?"BALL TRACK • SIX":
-      isFour?"BOUNDARY CAMERA":
-      "FIELDING CAMERA"
+      isSix?"SIX • CROWD CAM":
+      isFour?"FOUR • BOUNDARY CAM":
+      "FIELDING CAM"
     );
 
     cuPlayPlayerAction(nearest,"walk");
@@ -2060,9 +2154,20 @@ async function animateDelivery(o){
       await cuRunBatters(runs);
     }
 
-    if(isSix||isFour){
-      // Short replay-like hold without adding a full replay system yet.
-      await new Promise(r=>setTimeout(r,600));
+    if(isSix){
+      await cuCameraMove(
+        new THREE.Vector3(target.x>=0?34:-34,9.2,-39),
+        new THREE.Vector3(0,9.0,-55),
+        720
+      );
+      await new Promise(r=>setTimeout(r,850));
+    }else if(isFour){
+      await cuCameraMove(
+        new THREE.Vector3(target.x>=0?22:-22,3.8,target.z*.35+8),
+        new THREE.Vector3(target.x*.70,.5,target.z*.70),
+        520
+      );
+      await new Promise(r=>setTimeout(r,550));
     }
   }
 
@@ -2076,10 +2181,10 @@ async function animateDelivery(o){
 
   if(batter.bat)batter.bat.rotation.set(.12,0,-.16);
 
-  cuCameraLabel("BROADCAST • BOWLER END");
+  cuCameraLabel("BOWLER END");
   await cuCameraMove(
-    new THREE.Vector3(0,8.2,30.5),
-    new THREE.Vector3(0,1,-2.4),
+    new THREE.Vector3(0,5.35,24.6),
+    new THREE.Vector3(0,1.05,-3.2),
     520
   );
 }
