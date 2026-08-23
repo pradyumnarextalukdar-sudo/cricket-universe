@@ -1,6 +1,38 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.178.0/build/three.module.js";
-import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.178.0/examples/jsm/loaders/GLTFLoader.js";
-import { clone as cloneSkeleton } from "https://cdn.jsdelivr.net/npm/three@0.178.0/examples/jsm/utils/SkeletonUtils.js";
+let THREE=null;
+let GLTFLoader=null;
+let cloneSkeleton=null;
+let cuThreeModulesPromise=null;
+let cuInitThreePromise=null;
+
+/*
+  V4.0.2 stability architecture:
+  Game/menu JavaScript starts WITHOUT loading the 3D engine.
+  Three.js is fetched lazily only when the live 3D match screen is opened.
+  Therefore a model/CDN/Three.js failure cannot disable normal website buttons.
+*/
+function cuEnsureThreeModules(){
+  if(THREE&&GLTFLoader&&cloneSkeleton)return Promise.resolve();
+  if(cuThreeModulesPromise)return cuThreeModulesPromise;
+
+  cuThreeModulesPromise=Promise.all([
+    import("three"),
+    import("https://cdn.jsdelivr.net/npm/three@0.178.0/examples/jsm/loaders/GLTFLoader.js"),
+    import("https://cdn.jsdelivr.net/npm/three@0.178.0/examples/jsm/utils/SkeletonUtils.js")
+  ]).then(([threeMod,loaderMod,skeletonMod])=>{
+    THREE=threeMod;
+    GLTFLoader=loaderMod.GLTFLoader;
+    cloneSkeleton=skeletonMod.clone;
+
+    if(!THREE || !GLTFLoader || !cloneSkeleton){
+      throw new Error("Required Three.js modules did not initialize.");
+    }
+  }).catch(err=>{
+    cuThreeModulesPromise=null;
+    throw err;
+  });
+
+  return cuThreeModulesPromise;
+}
 
 const CU_HQ_CHARACTER_URL =
   "https://cdn.jsdelivr.net/gh/kunalkushwaha/vsim@main/packages/assets/library/human.glb";
@@ -868,6 +900,7 @@ function cuCameraLabel(text){
 async function cuLoadCharacterTemplate(){
   if(cuCharacterTemplatePromise)return cuCharacterTemplatePromise;
 
+  await cuEnsureThreeModules();
   const loader=new GLTFLoader();
 
   cuCharacterTemplatePromise=(async()=>{
@@ -1497,9 +1530,26 @@ function cuBuildStadium(scene){
 }
 
 function initThree(){
-  if(three)return;
-  const canvas=$("threeCanvas");
-  if(!canvas)return;
+  if(three?.ready)return three.ready;
+  if(cuInitThreePromise)return cuInitThreePromise;
+
+  cuInitThreePromise=(async()=>{
+    try{
+      await cuEnsureThreeModules();
+    }catch(err){
+      console.error("3D engine modules failed to load:",err);
+      cuAssetStatus("3D ENGINE LOAD FAILED • MENUS STILL AVAILABLE",true);
+      cuInitThreePromise=null;
+      return null;
+    }
+
+    if(three?.ready)return three.ready;
+
+    const canvas=$("threeCanvas");
+    if(!canvas){
+      cuInitThreePromise=null;
+      return null;
+    }
 
   const renderer=new THREE.WebGLRenderer({
     canvas,
@@ -1759,6 +1809,14 @@ function initThree(){
       cuAssetStatus("PLAYER ASSET FAILED • CHECK INTERNET",true);
     }
   })();
+
+    await three.ready;
+    return three;
+  })().finally(()=>{
+    if(!three?.ready)cuInitThreePromise=null;
+  });
+
+  return cuInitThreePromise;
 }
 
 async function cuRunBatters(runs){
@@ -1795,7 +1853,7 @@ function cuFieldCameraForTarget(target,isSix,isFour){
 }
 
 async function animateDelivery(o){
-  initThree();
+  await initThree();
   await three?.ready;
 
   const t=three;
