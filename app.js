@@ -243,6 +243,8 @@ function visualFromEvent(e){
       if(type==="six")splash("SIX!");
       else if(type==="four")splash("FOUR!");
       else if(type==="wicket")splash("WICKET!");
+      setAutoStatus("5s BREAK • NEXT DELIVERY SOON");
+      await new Promise(r=>setTimeout(r,5000));
     }catch(err){
       console.warn("Delivery animation failed",err)
     }
@@ -611,7 +613,7 @@ async function playBall(){if(!match||match.completed||ballLock||paused||state.lo
   updateHUD();await publishBallEvent(o,no);await publishMatchState();if(inningsDone())await endInnings();return true
 }finally{ballLock=false}}
 async function startAutoMatchLoop(){
-  if(!match||match.completed||state.localRole!=="host")return;if(match.engineMode==="server-v1"&&match.room?.cloudId){setAutoStatus("SERVER AUTO • ONLINE ENGINE ACTIVE");startSpectatorPolling();return;}const token=++autoLoopToken;paused=false;setAutoStatus("AUTO PLAY ACTIVE • 5s BETWEEN DELIVERIES");
+  if(!match||match.completed||state.localRole!=="host")return;if(match.engineMode==="server-v1"&&match.room?.cloudId){setAutoStatus("SERVER AUTO • ONLINE ENGINE ACTIVE");startSpectatorPolling();return;}const token=++autoLoopToken;paused=false;setAutoStatus("AUTO PLAY ACTIVE • 5s BREAK BETWEEN DELIVERIES");
   while(token===autoLoopToken&&match&&!match.completed&&state.localRole==="host"){
     if(paused){setAutoStatus("PAUSED");await sleep(250);continue}
     if(!match.currentBowler){await ensureCurrentBowler();if(token!==autoLoopToken||paused||!match||match.completed)continue}
@@ -773,7 +775,7 @@ function syncSpectatorState(m){
   if(!s.pendingDecision){clearInterval(decisionTimerHandle);$("decisionModal")?.classList.add("hidden")}
   if(match?.completed)setAutoStatus("MATCH COMPLETE"+(match.resultText?" • "+match.resultText:""));
   else if(s.pendingDecision)setAutoStatus(s.pendingDecision.type==="next_bowler"?"WAITING FOR BOWLING MANAGER • 60s":"WAITING FOR BATTING MANAGER • 60s");
-  else if(s.engineMode==="server-v1")setAutoStatus("SERVER AUTO • 5s BETWEEN DELIVERIES");
+  else if(s.engineMode==="server-v1")setAutoStatus("SERVER AUTO • 5s BREAK BETWEEN DELIVERIES");
   updateHUD();initThree();renderManagerLiveDock()
 }
 
@@ -1106,7 +1108,7 @@ async function animateDelivery(o){
   await tweenPosition(
     bowler,
     new THREE.Vector3(0,0,9.15),
-    1050,
+    1400,
     (_ease,raw)=>{
       const phase=raw*Math.PI*6;
       const swing=Math.sin(phase)*.85;
@@ -1119,7 +1121,7 @@ async function animateDelivery(o){
   );
 
   // 2) Bowling action: jump/lean + bowling arm over the shoulder.
-  await animatePose(520,p=>{
+  await animatePose(700,p=>{
     const s=Math.sin(p*Math.PI);
     bowler.position.y=s*.32;
     bowler.userData.torso.rotation.x=-.15+.38*p;
@@ -1134,17 +1136,17 @@ async function animateDelivery(o){
   await tweenPosition(
     t.ball,
     new THREE.Vector3(0,.22,-4.3),
-    520
+    650
   );
 
   await tweenPosition(
     t.ball,
     new THREE.Vector3(.08,1.02,-7.05),
-    250
+    320
   );
 
   // 4) Batter backswing + full follow-through.
-  await animatePose(430,p=>{
+  await animatePose(560,p=>{
     const back=p<.35?p/.35:1;
     const through=p<.35?0:(p-.35)/.65;
 
@@ -1186,7 +1188,7 @@ async function animateDelivery(o){
     const fielderRun=tweenPosition(
       nearest,
       new THREE.Vector3(target.x*.72,0,target.z*.72),
-      boundary?1250:850,
+      boundary?1450:1050,
       (_ease,raw)=>{
         const phase=raw*Math.PI*7;
         const swing=Math.sin(phase)*.8;
@@ -1201,7 +1203,7 @@ async function animateDelivery(o){
       tweenPosition(
         t.ball,
         target,
-        boundary?1250:850,
+        boundary?1450:1050,
         (_ease,raw)=>{
           // Visible arc for lofted shots.
           if(o.runs===6)t.ball.position.y+=Math.sin(raw*Math.PI)*8;
@@ -1213,7 +1215,7 @@ async function animateDelivery(o){
   }
 
   // Small hold so the delivery is visually readable before reset.
-  await new Promise(r=>setTimeout(r,180));
+  await new Promise(r=>setTimeout(r,260));
 
   resetHumanPose(bowler);
   resetHumanPose(batter);
