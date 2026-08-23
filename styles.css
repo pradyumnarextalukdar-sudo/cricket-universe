@@ -97,75 +97,115 @@ html,body{margin:0;min-height:100%;background:#000;color:var(--text);font-family
 
 
 /* ============================================================
-   CRICKET UNIVERSE V3 — RIGGED MODEL PRESENTATION
+   CRICKET UNIVERSE V4 — HIGH FIDELITY MATCH PRESENTATION
    ============================================================ */
 
-#threeStage{
+#threeStage.hq-stage{
   position:relative;
+  min-height:640px;
   overflow:hidden;
-  min-height:520px;
   background:
-    linear-gradient(180deg,#7faac3 0%,#6395ae 36%,#3d7a4d 100%);
+    linear-gradient(180deg,#86b1cb 0%,#6da0bb 32%,#387f48 100%);
+  border:1px solid #2d3842;
+  box-shadow:
+    inset 0 0 80px rgba(0,0,0,.14),
+    0 24px 55px rgba(0,0,0,.30);
 }
-#threeCanvas{
+
+#threeStage.hq-stage canvas{
+  display:block;
   width:100%;
   height:100%;
-  min-height:520px;
-  display:block;
+  min-height:640px;
 }
-.graphics-status{
+
+.graphics-status,
+.camera-badge,
+.stadium-atmosphere{
   position:absolute;
+  z-index:8;
+  pointer-events:none;
+  background:rgba(5,11,17,.78);
+  border:1px solid rgba(255,255,255,.20);
+  backdrop-filter:blur(7px);
+  box-shadow:0 5px 18px rgba(0,0,0,.22);
+}
+
+.graphics-status{
   left:14px;
   top:14px;
-  z-index:7;
-  padding:7px 10px;
-  border:1px solid rgba(255,255,255,.28);
-  background:rgba(4,12,18,.74);
-  color:#b9f5ff;
+  padding:8px 10px;
+  color:#a9f0ff;
   font-size:9px;
-  line-height:1;
   font-weight:1000;
   letter-spacing:.08em;
-  backdrop-filter:blur(5px);
   transition:opacity .5s ease;
 }
-.graphics-status.faded{opacity:.30}
+
+.graphics-status.faded{opacity:.38}
 .graphics-status.error{
-  color:#ffcf8e;
-  border-color:#875322;
+  color:#ffd095;
+  border-color:rgba(220,138,52,.58);
 }
+
 .camera-badge{
-  position:absolute;
   right:14px;
   top:14px;
-  z-index:7;
-  padding:7px 10px;
-  border:1px solid rgba(255,255,255,.22);
-  background:rgba(5,10,16,.68);
+  padding:8px 10px;
   color:#fff;
   font-size:8px;
   font-weight:900;
+  letter-spacing:.08em;
+}
+
+.stadium-atmosphere{
+  left:50%;
+  top:14px;
+  transform:translateX(-50%);
+  padding:8px 12px;
+  color:#dfe8ef;
+  font-size:8px;
+  font-weight:900;
   letter-spacing:.07em;
-  pointer-events:none;
 }
+
+.event-splash{
+  z-index:10;
+  text-shadow:
+    0 3px 0 rgba(0,0,0,.45),
+    0 0 32px rgba(255,255,255,.22);
+}
+
 .score-hud{
-  position:relative;
-  z-index:8;
-  box-shadow:0 -12px 30px rgba(0,0,0,.26);
+  box-shadow:
+    0 -16px 40px rgba(0,0,0,.30),
+    inset 0 1px 0 rgba(255,255,255,.05);
 }
-@media(max-width:700px){
-  #threeStage,#threeCanvas{
-    min-height:420px;
+
+@media(max-width:900px){
+  #threeStage.hq-stage,
+  #threeStage.hq-stage canvas{
+    min-height:520px;
+  }
+  .stadium-atmosphere{display:none}
+}
+
+@media(max-width:600px){
+  #threeStage.hq-stage,
+  #threeStage.hq-stage canvas{
+    min-height:455px;
   }
   .graphics-status{
     left:7px;
     top:7px;
-    max-width:58%;
+    padding:6px 7px;
     font-size:7px;
+    max-width:55%;
   }
   .camera-badge{
     right:7px;
     top:7px;
+    padding:6px 7px;
     font-size:7px;
   }
 }

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#05070a">
 <title>Cricket Universe — Manager Online Alpha</title>
-<link rel="stylesheet" href="styles.css?v=20260823-rigged-v3">
+<link rel="stylesheet" href="styles.css?v=20260823-hq-v4">
 </head>
 <body>
 <div id="boot" class="boot active">
@@ -329,10 +329,11 @@
       <div class="match-main">
         <div class="game-area">
           <div id="introCard" class="player-intro hidden"><div class="intro-name" id="introName">N. RAY</div><div class="intro-role" id="introRole">RIGHT ARM FAST</div><div class="intro-stats"><span>Matches <b>112</b></span><span>Wickets <b>168</b></span><span>Average <b>22.8</b></span><span>Best <b>5/31</b></span></div></div>
-          <div id="threeStage">
+          <div id="threeStage" class="hq-stage">
             <canvas id="threeCanvas"></canvas>
-            <div id="graphicsStatus" class="graphics-status">LOADING RIGGED CRICKETERS…</div>
-            <div id="cameraBadge" class="camera-badge">BROADCAST • BOWLER END</div>
+            <div id="graphicsStatus" class="graphics-status">HIGH-FIDELITY 3D • LOADING</div>
+            <div id="broadcastCamBadge" class="camera-badge">BROADCAST • BOWLER END</div>
+            <div id="stadiumAtmosphere" class="stadium-atmosphere">● LIVE • CRICKET UNIVERSE ARENA</div>
             <div id="eventSplash" class="event-splash">FOUR!</div>
           </div>
           <div class="score-hud">
@@ -501,13 +502,6 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 <script src="config.js"></script>
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.178.0/build/three.module.js"
-  }
-}
-</script>
-<script type="module" src="app.js?v=20260823-rigged-v301"></script>
+<script type="module" src="app.js?v=20260823-hq-v4"></script>
 </body>
 </html>
