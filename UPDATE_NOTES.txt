@@ -1,32 +1,16 @@
-CRICKET UNIVERSE V3 — REAL RIGGED MODELS (PHASE 1)
+CRICKET UNIVERSE V3.0.1 — BUTTON / MODULE LOADER HOTFIX
 
-This build discards the old capsule-player renderer for the live match.
+Problem:
+- The V3 app module failed before startup.
+- GLTFLoader and SkeletonUtils internally import the bare module name "three".
+- Without an import map, Chrome rejected the module graph.
+- Because app.js never executed, all game buttons appeared unresponsive.
 
-Implemented:
-- Real skinned humanoid GLB characters.
-- Compatible skeletal animation library loaded with Three.js GLTFLoader.
-- Skeleton-safe cloning for multiple on-field players.
-- Real sprint/jog/idle animation states.
-- Original cricket bowling pose layered on the humanoid armature.
-- Original batting stroke pose layered on the humanoid armature.
-- Cricket bat, helmet, pads and wicketkeeper gloves attached to rig bones.
-- Bowler run-up.
-- Batter shot and follow-through.
-- Running between wickets.
-- Fielder chase animation.
-- Wicketkeeper movement.
-- Moving bails on wickets.
-- PBR grass using CC0 ambientCG maps.
-- Improved pitch, crease, boundary, stadium bowl, crowd and floodlights.
-- ACES tone mapping, soft shadows and improved lighting.
-- Broadcast bowler-end camera plus field/boundary/wicket camera changes.
-- Mobile fallback if remote rigged assets cannot load.
+Fix:
+- Added an import map resolving "three" to the exact Three.js 0.178 module.
+- Cache-busted app.js so mobile Chrome fetches the corrected startup.
 
-No Supabase SQL changes are required.
-
-Important:
-This is the first real-rigged-model graphics build. The CC0 animation library
-contains general humanoid locomotion rather than motion-captured cricket
-deliveries. Cricket-specific bowling/batting actions are therefore authored
-procedurally on the compatible rig in this phase. Dedicated high-end cricket
-motion clips are the next asset milestone.
+Install:
+- Replace index.html on GitHub.
+- app.js and styles.css are included for convenience but do not need replacing.
+- No Supabase SQL is required.
