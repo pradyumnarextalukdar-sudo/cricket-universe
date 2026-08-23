@@ -11,7 +11,7 @@ const SAVE="cu_v11_state", SESSION="cu_v11_session", CFG="cu_v11_cfg", ACTIVE_MA
 const AUTO_BALL_GAP_MS=5000, ONLINE_MANAGER_TIMEOUT=60;
 const nowISO=()=>new Date().toISOString();
 
-let state=loadState(), session=loadJSON(SESSION,null), serverRole=null, currentPage="home", activeFixtureId=null, match=null, three=null, paused=false, ballLock=false, cloudPoll=null, decisionTimerHandle=null, autoLoopToken=0, restoredLiveMatch=false, lastAudioEventId=null, audioCtx=null;
+let state=loadState(), session=loadJSON(SESSION,null), serverRole=null, currentPage="home", activeFixtureId=null, match=null, three=null, paused=false, ballLock=false, cloudPoll=null, decisionTimerHandle=null, autoLoopToken=0, restoredLiveMatch=false, lastAudioEventId=null, lastVisualEventId=null, visualEventQueue=Promise.resolve(), audioCtx=null;
 state.settings.timeout=ONLINE_MANAGER_TIMEOUT;
 
 function loadJSON(k,d){try{return JSON.parse(localStorage.getItem(k)||"null")??d}catch{return d}}
@@ -227,6 +227,21 @@ function audioFromEvent(e){
   const type=e?.event_type||"ball",text=e?.payload?.text||"";
   playCricketSfx(type);
   if(type!=="decision")setTimeout(()=>speakCommentary(text),460)
+}
+function visualFromEvent(e){
+  const type=e?.event_type||"";
+  if(!["ball","four","six","wicket"].includes(type))return;
+  const payload=e?.payload||{};
+  // Queue deliveries so polling never starts two animations on top of each other.
+  visualEventQueue=visualEventQueue.then(async()=>{
+    if(currentPage!=="liveMatch"||document.visibilityState!=="visible")return;
+    try{
+      await animateDelivery({runs:Number(payload.runs||0),wicket:!!payload.wicket});
+      if(type==="six")splash("SIX!");
+      else if(type==="four")splash("FOUR!");
+      else if(type==="wicket")splash("WICKET!");
+    }catch(err){console.warn("Delivery animation failed",err)}
+  });
 }
 $("gameSoundToggle")?.addEventListener("click",()=>{ensureAudio();audioPref.sfx=!audioPref.sfx;saveAudioPref();if(audioPref.sfx)tone(440,.08,"sine",.05)});
 $("voiceToggle")?.addEventListener("click",()=>{ensureAudio();audioPref.voice=!audioPref.voice;if(!audioPref.voice&&"speechSynthesis" in window)speechSynthesis.cancel();saveAudioPref();if(audioPref.voice)speakCommentary("Commentary voice enabled.")});
@@ -659,13 +674,22 @@ async function startSpectatorPolling(){clearInterval(cloudPoll);cloudPoll=setInt
       const ordered=[...ev].reverse();$("commentaryFeed").innerHTML=ordered.map(e=>`<div class="com ${e.event_type}">${esc(e.payload?.text||e.event_type)}</div>`).join("");
       if(ordered.length){
         const newest=ordered[ordered.length-1].id;
+
+        // On first poll, use the newest event only as the baseline so old balls are
+        // not replayed. From then on, every fresh delivery gets sound + animation.
         if(lastAudioEventId===null)lastAudioEventId=newest;
         else{
           for(const e of ordered)if(Number(e.id)>Number(lastAudioEventId))audioFromEvent(e);
           lastAudioEventId=newest
         }
+
+        if(lastVisualEventId===null)lastVisualEventId=newest;
+        else{
+          for(const e of ordered)if(Number(e.id)>Number(lastVisualEventId))visualFromEvent(e);
+          lastVisualEventId=newest
+        }
       }
-      renderManagerLiveDock()}catch{}},2000)}
+      renderManagerLiveDock()}catch(err){console.warn("Live polling failed",err)}},1000)}
 function syncSpectatorState(m){
   const s=m.state||{},room=state.localRoom||match?.room;
   if(s.version>=3&&room){
@@ -746,7 +770,7 @@ async function loadCloudLiveMatches(){if(!cloudReady())return;try{const rows=awa
 
 function initThree(){if(three)return;const canvas=$("threeCanvas"),renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;const scene=new THREE.Scene();scene.background=new THREE.Color(0x6fa3c2);scene.fog=new THREE.Fog(0x6fa3c2,75,180);const camera=new THREE.PerspectiveCamera(40,1,.1,300);camera.position.set(0,16.5,38);camera.lookAt(0,1,0);scene.add(new THREE.HemisphereLight(0xf0f8ff,0x294426,2.1));const sun=new THREE.DirectionalLight(0xffffff,3);sun.position.set(-25,42,28);sun.castShadow=true;scene.add(sun);const ground=new THREE.Mesh(new THREE.CylinderGeometry(50,50,.5,96),new THREE.MeshStandardMaterial({color:0x367d45,roughness:1}));ground.position.y=-.35;ground.receiveShadow=true;scene.add(ground);for(let z=-44;z<44;z+=8){const stripe=new THREE.Mesh(new THREE.PlaneGeometry(95,4),new THREE.MeshBasicMaterial({color:z%16===0?0x3d854a:0x347b43,side:THREE.DoubleSide}));stripe.rotation.x=-Math.PI/2;stripe.position.set(0,-.07,z);scene.add(stripe)}const pitch=new THREE.Mesh(new THREE.BoxGeometry(4.3,.12,22),new THREE.MeshStandardMaterial({color:0xc9a66d}));pitch.position.y=.02;scene.add(pitch);const boundary=new THREE.Mesh(new THREE.TorusGeometry(45,.15,8,128),new THREE.MeshStandardMaterial({color:0xffffff}));boundary.rotation.x=Math.PI/2;boundary.position.y=.08;scene.add(boundary);const standMat=new THREE.MeshStandardMaterial({color:0x273842});for(let i=0;i<28;i++){const a=i/28*Math.PI*2,s=new THREE.Mesh(new THREE.BoxGeometry(10,5,5),standMat);s.position.set(Math.cos(a)*58,2.1,Math.sin(a)*58);s.lookAt(0,2.1,0);scene.add(s)}function human(color){const g=new THREE.Group(),shirt=new THREE.MeshStandardMaterial({color}),skin=new THREE.MeshStandardMaterial({color:0xb97950}),dark=new THREE.MeshStandardMaterial({color:0x19222c});const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.34,.72,5,10),shirt);torso.position.y=1.45;g.add(torso);const head=new THREE.Mesh(new THREE.SphereGeometry(.25,16,12),skin);head.position.y=2.3;g.add(head);const legs=[],arms=[];for(let s of[-1,1]){const l=new THREE.Mesh(new THREE.CapsuleGeometry(.1,.6,4,8),dark);l.position.set(.15*s,.62,0);g.add(l);legs.push(l);const a=new THREE.Mesh(new THREE.CapsuleGeometry(.085,.52,4,8),skin);a.position.set(.45*s,1.46,0);a.rotation.z=.18*s;g.add(a);arms.push(a)}g.userData={legs,arms};return g}const batter=human(0x20242b);batter.position.set(0,0,-7.2);batter.rotation.y=Math.PI;scene.add(batter);const non=human(0x20242b);non.position.set(.75,0,7);scene.add(non);const bowler=human(0x1674c5);bowler.position.set(0,0,15);bowler.rotation.y=Math.PI;scene.add(bowler);const keeper=human(0x1674c5);keeper.position.set(0,0,-10);scene.add(keeper);const fieldPos=[[-18,0],[-14,18],[14,18],[18,0],[-16,-18],[16,-18],[-29,10],[29,10],[-30,-12]],fielders=fieldPos.map(p=>{const h=human(0x1674c5);h.position.set(p[0],0,p[1]);scene.add(h);return h});const bat=new THREE.Mesh(new THREE.BoxGeometry(.18,1.4,.28),new THREE.MeshStandardMaterial({color:0xe1bb79}));bat.position.set(.48,1.2,-7.55);scene.add(bat);const ball=new THREE.Mesh(new THREE.SphereGeometry(.11,14,10),new THREE.MeshStandardMaterial({color:0xb51e31}));ball.position.set(0,1.8,14);scene.add(ball);function resize(){const r=canvas.parentElement.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix()}addEventListener("resize",resize);resize();(function loop(){requestAnimationFrame(loop);renderer.render(scene,camera)})();three={scene,camera,renderer,batter,non,bowler,keeper,fielders,bat,ball}}
 async function tween(obj,to,ms){const from=obj.position.clone(),s=performance.now();return new Promise(res=>{function f(n){const t=Math.min(1,(n-s)/ms);obj.position.lerpVectors(from,to,t);if(t<1)requestAnimationFrame(f);else res()}requestAnimationFrame(f)})}
-async function animateDelivery(o){initThree();const t=three,k=.45;t.bowler.position.set(0,0,15);t.ball.position.set(0,1.8,14);t.bat.rotation.z=-.15;await tween(t.bowler,new THREE.Vector3(0,0,8.7),1500*k);await tween(t.ball,new THREE.Vector3(0,.22,-4),650*k);await tween(t.ball,new THREE.Vector3(.1,1,-7),300*k);t.bat.rotation.z=1.5;await sleep(200*k);if(o.wicket)await tween(t.ball,new THREE.Vector3(0,.6,-8.4),420*k);else{const pts=o.runs>=4?[[35,4,-31],[-39,.2,-18],[31,.2,30]]:[[13,.2,-10],[-12,.2,-7],[18,.2,6]],p=pts[Math.floor(Math.random()*pts.length)],target=new THREE.Vector3(...p);const nearest=t.fielders.reduce((a,b)=>a.position.distanceTo(target)<b.position.distanceTo(target)?a:b);tween(nearest,new THREE.Vector3(target.x*.75,0,target.z*.75),900*k);await tween(t.ball,target,900*k)}}
+async function animateDelivery(o){initThree();const t=three,k=.45;t.bowler.position.set(0,0,15);t.ball.position.set(0,1.8,14);t.bat.rotation.z=-.15;const resetPos=[[-18,0],[-14,18],[14,18],[18,0],[-16,-18],[16,-18],[-29,10],[29,10],[-30,-12]];t.fielders.forEach((f,i)=>f.position.set(resetPos[i][0],0,resetPos[i][1]));await tween(t.bowler,new THREE.Vector3(0,0,8.7),1500*k);await tween(t.ball,new THREE.Vector3(0,.22,-4),650*k);await tween(t.ball,new THREE.Vector3(.1,1,-7),300*k);t.bat.rotation.z=1.5;await sleep(200*k);if(o.wicket)await tween(t.ball,new THREE.Vector3(0,.6,-8.4),420*k);else{const pts=o.runs>=4?[[35,4,-31],[-39,.2,-18],[31,.2,30]]:[[13,.2,-10],[-12,.2,-7],[18,.2,6]],p=pts[Math.floor(Math.random()*pts.length)],target=new THREE.Vector3(...p);const nearest=t.fielders.reduce((a,b)=>a.position.distanceTo(target)<b.position.distanceTo(target)?a:b);tween(nearest,new THREE.Vector3(target.x*.75,0,target.z*.75),900*k);await tween(t.ball,target,900*k)}}
 
 function renderAll(){state.settings.timeout=ONLINE_MANAGER_TIMEOUT;renderPlayers();renderTeams();renderLineups();renderTournamentSelect();renderTournamentDashboard();renderMatchRoom();renderManagerHub();renderLiveList();renderPoints();renderStats();renderCareer();cloudUI();renderProfilePage();$("careerPoints").textContent=state.profile.points;$("thrillBias").value=state.settings.thrill;$("thrillLabel").textContent=state.settings.thrill;$("tieBias").value=state.settings.tie;$("tieLabel").textContent=state.settings.tie+"%";$("defaultManagerTimeout").value=ONLINE_MANAGER_TIMEOUT;$("managerControl").value=state.settings.managerControl?"on":"off";const resume=$("resumeLiveMatchTile");if(resume)resume.classList.toggle("hidden",!(match&&!match.completed&&state.localRole==="host"));const c=getCfg();$("supabaseUrl").value=c.url||"";$("supabaseKey").value=c.key||"";$("localRole").value=state.localRole}
 if(session&&cloudReady()){

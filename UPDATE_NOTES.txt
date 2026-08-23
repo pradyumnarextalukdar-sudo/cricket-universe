@@ -1,25 +1,13 @@
-CRICKET UNIVERSE V1.3.2 — SERVER ACTIVATION HOTFIX
-
-Why the match could still stop when Chrome closed:
-The Supabase Cron job can be active, but each individual match must also have:
-  state.engineMode = "server-v1"
-  state.engineActive = true
-The previous frontend could fail to publish those flags if the Admin session was
-temporarily treated as Spectator.
+CRICKET UNIVERSE V1.3.3
 
 Fixes:
-- Verified Supabase admin role can start/publish matches even if stale local state is wrong.
-- Server activation errors are no longer silently ignored.
-- After the toss, the game writes server-v1 + engineActive=true to Supabase.
-- The game immediately reads the match row back and verifies the server accepted it.
-- Only after verification does it display:
-  SERVER AUTO ACTIVE • SAFE TO CLOSE/BACKGROUND CHROME
-- If activation fails, the UI explicitly reports failure.
+- Cron engine checks every 1 second while match state enforces a 5-second delivery gap.
+- Removes the previous 5-10 second timing drift.
+- Browser polls live state/events every 1 second.
+- New server delivery events trigger 3D delivery animation.
+- SIX/FOUR/WICKET splash animation fires from server events.
+- Cricket SFX and commentary remain synchronized to server events.
+- Fielders reset to their base positions before each delivery animation.
 
-Upload:
-- app.js
-- index.html
-No new SQL is required if server_engine_v13.sql already ran successfully.
-
-IMPORTANT:
-Create a NEW online match after installing this hotfix.
+Upload app.js + index.html to GitHub.
+Then run server_timing_patch_v133.sql once in Supabase.
