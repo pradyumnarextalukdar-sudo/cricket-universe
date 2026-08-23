@@ -1,14 +1,27 @@
-CRICKET UNIVERSE V1.3.5 — PROPER FIVE-SECOND BREAK
+CRICKET UNIVERSE — GRAPHICS ENGINE V2 FOUNDATION
 
-Fix:
-- 5 seconds now means a real pause AFTER the visible delivery animation.
-- Delivery animation itself is slowed and made easier to watch.
-- Server delivery events are spaced ~10 seconds apart:
-  roughly 4–5 seconds for bowling/batting/fielding animation + 5 seconds rest.
-- Supabase Cron still checks every 1 second for accurate timing.
-- Manager 60-second decision timer is unchanged.
+This build upgrades the live match presentation while preserving the existing Supabase online match engine and manager systems.
 
-Install:
-1. Upload app.js and index.html to GitHub.
-2. Run server_delivery_gap_v135.sql ONCE in Supabase SQL Editor.
-3. Start a NEW online match.
+WHAT IS NEW
+- Original articulated low-poly human cricketers with separate shoulders, elbows, hips and knees.
+- Batting gear: helmet, grill, gloves, pads and attached cricket bat.
+- Bowling team uniforms use the actual team accent colour.
+- Wicketkeeper equipment and dedicated wicketkeeper reactions.
+- Umpire with original model and hat.
+- Stadium bowl, crowd, sight screens, advertising boards and floodlight towers.
+- Procedural grass texture with mowing stripes and a worn cricket pitch.
+- Broadcast scoreboard ribbon, field radar and camera/delivery labels.
+- Multiple automatic camera presets: bowler, batter, field and wicket.
+- Visible bowler run-up, gather, delivery stride and arm action.
+- Batter footwork, bat swing and follow-through.
+- Ball bounce, shot trajectory and lofted sixes.
+- Fielders chase the ball, bend to collect and return it.
+- Batters visibly run on 1/2/3 run outcomes.
+- Wicketkeeper reacts and bails move on wickets.
+- Outcome-specific camera changes for wickets and boundaries.
+
+IMPORTANT
+This is the V2 browser-native graphics FOUNDATION. It is substantially more detailed than the old capsule-player prototype, but it is still a stylised low-poly web game rather than photorealistic motion-captured console graphics. The next step after testing this build is a GLB/GLTF asset pipeline for externally sourced or custom rigged human models and animation clips.
+
+INSTALL
+Replace app.js, index.html and styles.css in GitHub. No new Supabase SQL is required.

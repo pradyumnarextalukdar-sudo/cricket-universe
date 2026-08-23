@@ -94,3 +94,23 @@ html,body{margin:0;min-height:100%;background:#000;color:var(--text);font-family
   .auto-match-status{grid-column:2 / -1;min-width:0}
   .role-display{grid-column:1 / -1}
 }
+
+
+/* ==========================================================
+   CRICKET UNIVERSE GRAPHICS ENGINE V2 — broadcast presentation
+   ========================================================== */
+.graphics-v2-stage{background:linear-gradient(#94bfd7 0 32%,#367b43 33% 100%);border:1px solid #313944;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03),0 16px 42px rgba(0,0,0,.30)}
+.graphics-v2-stage:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.12),transparent 20%,transparent 78%,rgba(0,0,0,.18));z-index:2}
+.broadcast-ribbon{position:absolute;z-index:6;left:12px;right:12px;top:10px;height:48px;display:grid;grid-template-columns:1fr .8fr 1fr;align-items:stretch;background:linear-gradient(90deg,rgba(8,28,42,.94),rgba(20,42,55,.94),rgba(9,24,39,.94));border:1px solid rgba(255,255,255,.42);box-shadow:0 3px 14px rgba(0,0,0,.42);clip-path:polygon(0 0,98.5% 0,100% 50%,98.5% 100%,0 100%,1.2% 50%)}
+.broadcast-ribbon>div{display:flex;align-items:center;gap:10px;padding:0 16px;min-width:0}.br-team{border-right:1px solid rgba(255,255,255,.24)}.br-team span{font-size:10px;letter-spacing:.1em;color:#d8e6ed;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.br-team b{font-size:21px}.br-mid{justify-content:center;flex-direction:column;gap:0}.br-mid b{font-size:15px}.br-mid span{font-size:9px;color:#a7b4bd}.br-right{justify-content:flex-end;border-left:1px solid rgba(255,255,255,.24)}.br-right span{font-size:9px;color:#ffd868}.br-right b{font-size:9px;color:#e7edf2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.camera-label,.delivery-info{position:absolute;z-index:6;left:14px;padding:6px 9px;background:rgba(6,12,18,.76);border:1px solid rgba(255,255,255,.24);font-size:9px;font-weight:900;letter-spacing:.08em;backdrop-filter:blur(5px)}.camera-label{top:70px;color:#77e6f5}.delivery-info{bottom:13px;color:#f6e0a2;max-width:56%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.field-radar{position:absolute;z-index:6;right:17px;top:72px;width:112px;height:112px;border:2px solid rgba(255,255,255,.78);border-radius:50%;background:radial-gradient(ellipse at center,rgba(56,127,68,.76) 0 58%,rgba(16,30,20,.74) 59% 100%);box-shadow:0 3px 15px rgba(0,0,0,.35);overflow:hidden}.field-radar:before{content:"";position:absolute;inset:11px;border:1px solid rgba(255,255,255,.28);border-radius:50%}.radar-pitch{position:absolute;left:47%;top:30%;width:6%;height:40%;background:#c8aa74;transform:rotate(0deg);border:1px solid rgba(255,255,255,.35)}.radar-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:#eef4f6;box-shadow:0 0 0 1px rgba(0,0,0,.5);transform:translate(-50%,-50%)}.radar-batter{background:#f5cf42;width:7px;height:7px}
+.event-splash{z-index:8;text-transform:uppercase;font-style:italic;letter-spacing:-.03em;text-shadow:0 5px 18px #000,0 0 22px rgba(255,255,255,.25)}
+.score-hud{background:linear-gradient(90deg,#132d41,#112131 38%,#111925 62%,#2a1820);border-top:1px solid #4c6272;border-bottom:3px solid #d89d35;box-shadow:0 -5px 14px rgba(0,0,0,.28)}
+.score-center b{font-size:29px;letter-spacing:-.04em}.batters b,.bowler-hud b{font-size:12px}.last-balls i{width:17px;height:17px;background:#18242e;border-color:#667582}
+
+@media(max-width:700px){
+  .broadcast-ribbon{left:5px;right:5px;top:5px;height:40px}.broadcast-ribbon>div{padding:0 8px;gap:5px}.br-team span{font-size:7px}.br-team b{font-size:16px}.br-mid b{font-size:11px}.br-mid span,.br-right span,.br-right b{font-size:7px}
+  .field-radar{width:82px;height:82px;right:8px;top:53px}.camera-label{top:52px;left:7px;font-size:7px}.delivery-info{left:7px;bottom:8px;font-size:7px;max-width:62%}
+  .score-hud{height:66px;padding:0 8px;grid-template-columns:1.1fr .8fr 1.1fr}.score-center b{font-size:22px}.batters b,.bowler-hud b{font-size:9px}.score-hud span,.score-hud small{font-size:8px}.last-balls i{width:13px;height:13px;font-size:7px}
+}

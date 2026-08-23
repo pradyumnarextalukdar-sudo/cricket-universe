@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#05070a">
 <title>Cricket Universe — Manager Online Alpha</title>
-<link rel="stylesheet" href="styles.css?v=20260823-serveraudio1">
+<link rel="stylesheet" href="styles.css?v=20260823-graphicsv2a">
 </head>
 <body>
 <div id="boot" class="boot active">
@@ -329,9 +329,20 @@
       <div class="match-main">
         <div class="game-area">
           <div id="introCard" class="player-intro hidden"><div class="intro-name" id="introName">N. RAY</div><div class="intro-role" id="introRole">RIGHT ARM FAST</div><div class="intro-stats"><span>Matches <b>112</b></span><span>Wickets <b>168</b></span><span>Average <b>22.8</b></span><span>Best <b>5/31</b></span></div></div>
-          <div id="threeStage"><canvas id="threeCanvas"></canvas><div id="eventSplash" class="event-splash">FOUR!</div></div>
+          <div id="threeStage" class="graphics-v2-stage">
+            <canvas id="threeCanvas"></canvas>
+            <div class="broadcast-ribbon">
+              <div class="br-team"><span id="stageBatTeam">BAT</span><b id="stageScore">0/0</b></div>
+              <div class="br-mid"><b id="stageOvers">0.0 OV</b><span id="stageRate">CRR 0.00</span></div>
+              <div class="br-right"><span id="stageTarget"></span><b id="stageThisOver">THIS OVER</b></div>
+            </div>
+            <div id="cameraLabel" class="camera-label">BROADCAST CAM</div>
+            <div id="deliveryInfo" class="delivery-info">GRAPHICS ENGINE V2</div>
+            <div id="fieldRadar" class="field-radar"><span class="radar-pitch"></span></div>
+            <div id="eventSplash" class="event-splash">FOUR!</div>
+          </div>
           <div class="score-hud">
-            <div class="batters"><div><b id="hudStriker">A. STONE</b><span id="hudStrikerRuns">0 0</span></div><div><b id="hudNon">M. VALE</b><span>0 0</span></div></div>
+            <div class="batters"><div><b id="hudStriker">A. STONE</b><span id="hudStrikerRuns">0 0</span></div><div><b id="hudNon">M. VALE</b><span id="hudNonRuns">0 0</span></div></div>
             <div class="score-center"><b id="hudScore">0-0</b><span id="hudOvers">0.0 OVERS</span><small id="hudRate">RUN RATE 0.00</small></div>
             <div class="bowler-hud"><b id="hudBowler">N. RAY</b><span id="hudBowlingFigures">0-0 (0.0)</span><div id="lastBalls" class="last-balls"></div></div>
           </div>
@@ -496,6 +507,6 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 <script src="config.js"></script>
-<script type="module" src="app.js?v=20260823-fivebreak5"></script>
+<script type="module" src="app.js?v=20260823-graphicsv2a"></script>
 </body>
 </html>
