@@ -1,27 +1,21 @@
-CRICKET UNIVERSE V1.2 ALPHA
+CRICKET UNIVERSE V1.3 — SERVER AUTO + AUDIO
 
-Update:
-- Match progress saved after every completed delivery to Supabase and locally.
-- Active online host match can be restored after closing/reopening the browser.
-- Home shows RESUME LIVE MATCH when an unfinished match is recovered.
-- Manual PLAY ONE BALL removed.
-- REAL-TIME / FAST TEST speed selector removed.
-- Match runs automatically.
-- 5-second break between deliveries.
-- Online manager decision window fixed at 60 seconds.
-- If the bowling manager times out, AI selects a legal bowler and play continues.
-- Batting manager gets a private 0-100 Batting Aggression slider.
-- Defensive: more defence, dots, singles and twos.
-- Balanced: normal full scoring range.
-- All-Out: more boundary/six intent with increased wicket risk.
-- Batting aggression can be changed live and is applied before the next delivery.
-- Host and opposition cannot submit the batting manager's aggression action.
-- Manager can watch the live match without losing Manager role.
-- Existing Admin/Spectator security, dedicated Back button, logo Home navigation,
-  profile/account page, and cloud setup restrictions are preserved.
+WHAT CHANGED
+- Online match engine moves from the Host browser to Supabase Cron.
+- Online matches keep progressing if Chrome is backgrounded, the screen is locked,
+  another app is opened, or the Host closes Chrome.
+- Automatic 5-second delivery cadence.
+- 60-second next-bowler / incoming-batter manager decision windows.
+- AI fallback after timeout.
+- Batting manager's private aggression setting is read before every delivery.
+- Synthetic bowling, bat impact, fielding, boundary/crowd and wicket sounds.
+- Spoken ball-by-ball commentary using the device/browser's available English voice.
+- Separate GAME SOUND and COMMENTARY voice toggles.
+- The in-game MENU does not stop an online match; it only changes the local view.
 
-Important:
-The match state survives browser closure, but with the current free static
-GitHub Pages architecture the simulation itself pauses when the Host browser
-is fully closed. Reopening the Admin account restores the latest completed
-delivery and provides RESUME LIVE MATCH.
+IMPORTANT
+- Run server_engine_v13.sql once in Supabase SQL Editor before starting a NEW online match.
+- Existing live matches created by V1.2 should be ended/recreated for the server engine.
+- Audio and 3D animation cannot literally play while the browser/app is hidden, because the
+  operating system controls foreground media/rendering. The MATCH itself continues on Supabase.
+  When the user returns, the latest score/state is shown and future sounds/commentary resume.

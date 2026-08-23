@@ -7,11 +7,11 @@ const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const uid=()=>crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36);
 const code=(prefix="M")=>prefix+"-"+Math.random().toString(36).slice(2,6).toUpperCase();
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
-const SAVE="cu_v11_state", SESSION="cu_v11_session", CFG="cu_v11_cfg", ACTIVE_MATCH="cu_v12_active_match";
+const SAVE="cu_v11_state", SESSION="cu_v11_session", CFG="cu_v11_cfg", ACTIVE_MATCH="cu_v12_active_match", AUDIO_PREF="cu_v13_audio";
 const AUTO_BALL_GAP_MS=5000, ONLINE_MANAGER_TIMEOUT=60;
 const nowISO=()=>new Date().toISOString();
 
-let state=loadState(), session=loadJSON(SESSION,null), serverRole=null, currentPage="home", activeFixtureId=null, match=null, three=null, paused=false, ballLock=false, cloudPoll=null, decisionTimerHandle=null, autoLoopToken=0, restoredLiveMatch=false;
+let state=loadState(), session=loadJSON(SESSION,null), serverRole=null, currentPage="home", activeFixtureId=null, match=null, three=null, paused=false, ballLock=false, cloudPoll=null, decisionTimerHandle=null, autoLoopToken=0, restoredLiveMatch=false, lastAudioEventId=null, audioCtx=null;
 state.settings.timeout=ONLINE_MANAGER_TIMEOUT;
 
 function loadJSON(k,d){try{return JSON.parse(localStorage.getItem(k)||"null")??d}catch{return d}}
@@ -60,6 +60,70 @@ function generateDemo(){
 }
 if(!state.players.length||!state.teams.length)generateDemo();
 
+const audioPref=Object.assign({sfx:true,voice:true},loadJSON(AUDIO_PREF,{}));
+function saveAudioPref(){localStorage.setItem(AUDIO_PREF,JSON.stringify(audioPref));renderAudioButtons()}
+function renderAudioButtons(){
+  const s=$("gameSoundToggle"),v=$("voiceToggle");
+  if(s)s.textContent=audioPref.sfx?"🔊 GAME SOUND ON":"🔇 GAME SOUND OFF";
+  if(v)v.textContent=audioPref.voice?"🎙 COMMENTARY ON":"🎙 COMMENTARY OFF";
+}
+function ensureAudio(){
+  try{
+    if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==="suspended")audioCtx.resume();
+  }catch{}
+}
+function tone(freq=220,dur=.08,type="sine",gain=.07,delay=0){
+  if(!audioPref.sfx)return;
+  ensureAudio();if(!audioCtx)return;
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain(),t=audioCtx.currentTime+delay;
+  o.type=type;o.frequency.setValueAtTime(freq,t);
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.001,gain),t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g).connect(audioCtx.destination);o.start(t);o.stop(t+dur+.02)
+}
+function noise(dur=.12,gain=.04,delay=0,highpass=500){
+  if(!audioPref.sfx)return;
+  ensureAudio();if(!audioCtx)return;
+  const sr=audioCtx.sampleRate,buf=audioCtx.createBuffer(1,Math.max(1,Math.floor(sr*dur)),sr),d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);
+  const src=audioCtx.createBufferSource(),filter=audioCtx.createBiquadFilter(),g=audioCtx.createGain(),t=audioCtx.currentTime+delay;
+  src.buffer=buf;filter.type="highpass";filter.frequency.value=highpass;g.gain.value=gain;
+  src.connect(filter).connect(g).connect(audioCtx.destination);src.start(t)
+}
+function playCricketSfx(kind){
+  if(!audioPref.sfx)return;
+  ensureAudio();
+  // bowling/run-up whoosh
+  noise(.16,.035,0,350);tone(115,.10,"sine",.025,.02);
+  if(kind==="six"){noise(.08,.15,.24,1200);tone(155,.10,"square",.09,.24);tone(310,.24,"sine",.055,.33);noise(.55,.045,.35,180)}
+  else if(kind==="four"){noise(.07,.13,.24,1100);tone(180,.09,"square",.075,.24);noise(.34,.035,.35,200)}
+  else if(kind==="wicket"){noise(.06,.12,.24,1500);tone(520,.08,"square",.08,.24);tone(360,.12,"square",.07,.32);tone(210,.18,"sawtooth",.055,.43)}
+  else if(kind==="ball"){tone(185,.045,"square",.04,.25);noise(.08,.025,.31,650)}
+  else if(kind==="decision"){tone(620,.06,"sine",.045,0);tone(760,.08,"sine",.04,.09)}
+}
+function commentaryVoice(){
+  const vs=window.speechSynthesis?.getVoices?.()||[];
+  return vs.find(v=>/^en-IN$/i.test(v.lang))||vs.find(v=>/^en/i.test(v.lang))||vs[0]||null
+}
+function speakCommentary(text){
+  if(!audioPref.voice||!text||!("speechSynthesis" in window))return;
+  try{
+    // Keep commentary current instead of building a long queue.
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(String(text).replace(/[—–]/g,", "));
+    const v=commentaryVoice();if(v)u.voice=v;
+    u.lang=v?.lang||"en-IN";u.rate=1.08;u.pitch=1.0;u.volume=.92;
+    speechSynthesis.speak(u)
+  }catch{}
+}
+function audioFromEvent(e){
+  const type=e?.event_type||"ball",text=e?.payload?.text||"";
+  playCricketSfx(type);
+  if(type!=="decision")setTimeout(()=>speakCommentary(text),460)
+}
+$("gameSoundToggle")?.addEventListener("click",()=>{ensureAudio();audioPref.sfx=!audioPref.sfx;saveAudioPref();if(audioPref.sfx)tone(440,.08,"sine",.05)});
+$("voiceToggle")?.addEventListener("click",()=>{ensureAudio();audioPref.voice=!audioPref.voice;if(!audioPref.voice&&"speechSynthesis" in window)speechSynthesis.cancel();saveAudioPref();if(audioPref.voice)speakCommentary("Commentary voice enabled.")});
+
 let pageHistory=[];
 function updateBackButton(){const b=$("gameBackBtn");if(b)b.classList.toggle("hidden",currentPage==="home")}
 function nav(id,opt={}){if(!$(id))return;if(id===currentPage){updateBackButton();return}if(!opt.fromBack&&currentPage)pageHistory.push(currentPage);qsa(".page").forEach(p=>p.classList.remove("active"));$(id).classList.add("active");currentPage=id;if(id==="home")pageHistory=[];if(id==="liveMatch")initThree();if(id==="scorecard")renderScorecard();if(id==="pointsTable")renderPoints();if(id==="statistics")renderStats();if(id==="profile")renderProfilePage();updateBackButton();window.scrollTo({top:0,behavior:"smooth"})}
@@ -69,7 +133,7 @@ $("brandHome")?.addEventListener("click",()=>nav("home"));
 $("userProfileButton")?.addEventListener("click",()=>nav("profile"));
 $("resumeLiveMatchTile")?.addEventListener("click",resumeRestoredMatch);
 qsa("[data-nav]").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.nav)));
-$("enterGame").addEventListener("click",()=>{$("boot").classList.remove("active");$("app").classList.remove("hidden");updateBackButton()});
+$("enterGame").addEventListener("click",()=>{ensureAudio();renderAudioButtons();$("boot").classList.remove("active");$("app").classList.remove("hidden");updateBackButton()});
 
 function P(id){return state.players.find(p=>p.id===id)}
 function T(id){return state.teams.find(t=>t.id===id)}
@@ -236,7 +300,7 @@ async function pollRoom(){
     const ms=await api("/rest/v1/matches?id=eq."+r.cloudId+"&select=*");if(!ms.length)return;const m=ms[0];r.status=m.status;r.shareCode=m.share_code;r.decisionTimer=ONLINE_MANAGER_TIMEOUT;r.liveState=m.state||{};
     const subs=await api("/rest/v1/lineup_submissions?match_id=eq."+r.cloudId+"&select=tournament_team_id,lineup,user_id");
     if(m.tournament_id){const tts=await api("/rest/v1/tournament_teams?tournament_id=eq."+m.tournament_id+"&select=id,local_team_id,manager_user_id");for(const tt of tts){const s=subs.find(x=>x.tournament_team_id===tt.id);if(tt.local_team_id===r.teamA){r.lineupA=s?.lineup||r.lineupA;r.managerA=tt.manager_user_id?"Claimed ✓":r.managerA}else if(tt.local_team_id===r.teamB){r.lineupB=s?.lineup||r.lineupB;r.managerB=tt.manager_user_id?"Claimed ✓":r.managerB}}}
-    if(m.status==="live"&&state.localRole==="spectator")syncSpectatorState(m);
+    if(m.status==="live"&&(state.localRole==="spectator"||m.state?.engineMode==="server-v1"))syncSpectatorState(m);
     if(m.status==="live"&&(state.localRole==="managerA"||state.localRole==="managerB"))handleRemoteManagerDecision(m.state?.pendingDecision);
     localStorage.setItem(SAVE,JSON.stringify(state));renderMatchRoom();renderManagerHub()
   }catch{}
@@ -267,7 +331,7 @@ async function resolveRestoredPendingDecision(){
   match.pendingDecision=null;await publishMatchState()
 }
 async function resumeRestoredMatch(){
-  if(!match||match.completed)return alert("No live match to resume.");paused=false;restoredLiveMatch=false;await resolveRestoredPendingDecision();nav("liveMatch");updateHUD();renderCommentaryFromState();await publishMatchState();startAutoMatchLoop()
+  if(!match||match.completed)return alert("No live match to resume.");paused=false;restoredLiveMatch=false;nav("liveMatch");updateHUD();renderCommentaryFromState();if(match.engineMode==="server-v1"&&match.room?.cloudId){setAutoStatus("SERVER AUTO • ONLINE ENGINE ACTIVE");startSpectatorPolling()}else{await resolveRestoredPendingDecision();await publishMatchState();startAutoMatchLoop()}
 }
 function renderCommentaryFromState(){if(!$("commentaryFeed")||!match)return;$("commentaryFeed").innerHTML=(match.logs||[]).map(x=>`<div class="com ${esc(x.cls||"")}">${esc(x.text)}</div>`).join("");$("commentaryFeed").scrollTop=$("commentaryFeed").scrollHeight}
 
@@ -276,11 +340,22 @@ $("hostStartMatch").addEventListener("click",async()=>{
   if(!r.lineupA||!r.lineupB){if(!confirm("One or both managers have not submitted a Playing XI. Use default XIs and start anyway?"))return;if(!r.lineupA)r.lineupA={xi:T(r.teamA).defaultXI,battingOrder:T(r.teamA).defaultXI,captain:T(r.teamA).defaultXI[0],wicketkeeper:T(r.teamA).defaultXI[4]};if(!r.lineupB)r.lineupB={xi:T(r.teamB).defaultXI,battingOrder:T(r.teamB).defaultXI,captain:T(r.teamB).defaultXI[0],wicketkeeper:T(r.teamB).defaultXI[4]}}
   r.decisionTimer=ONLINE_MANAGER_TIMEOUT;save();prepareMatch(r);if(r.cloudId&&session)await api("/rest/v1/matches?id=eq."+r.cloudId,{method:"PATCH",body:JSON.stringify({status:"live",started_at:nowISO(),decision_timeout:ONLINE_MANAGER_TIMEOUT,state:serializeMatch(),updated_at:nowISO()})}).catch(()=>{});persistActiveMatchLocal();nav("toss");setTimeout(()=>{$("tossResult").textContent=(Math.random()<.5?T(r.teamA).name:T(r.teamB).name)+" won the toss and elected to bowl."},900)
 });
-$("tossContinue").addEventListener("click",async()=>{nav("liveMatch");showPlayerIntro(match.bowlingTeam);updateHUD();if(!(match.logs||[]).length)addCom(`${match.battingTeam.name} begin the innings.`,"system");await publishMatchState();startAutoMatchLoop()});
+$("tossContinue").addEventListener("click",async()=>{
+  nav("liveMatch");showPlayerIntro(match.bowlingTeam);updateHUD();
+  if(!(match.logs||[]).length)addCom(`${match.battingTeam.name} begin the innings.`,"system");
+  if(match.room?.cloudId&&session){
+    match.engineMode="server-v1";match.engineActive=true;match.nextDeliveryAt=nowISO();
+    await publishMatchState();
+    setAutoStatus("SERVER AUTO • MATCH CONTINUES EVEN IF THIS TAB IS BACKGROUNDED");
+    startSpectatorPolling();
+  }else{
+    match.engineMode="browser";match.engineActive=true;await publishMatchState();startAutoMatchLoop()
+  }
+});
 
 function prepareMatch(r){
   const a=T(r.teamA),b=T(r.teamB);const battingFirst=Math.random()<.5?a:b,bowlingFirst=battingFirst.id===a.id?b:a;
-  match={room:r,a,b,innings:1,battingTeam:battingFirst,bowlingTeam:bowlingFirst,score:0,wickets:0,balls:0,target:null,first:null,order:[],striker:null,non:null,nextIndex:2,currentBowler:null,lastBowler:null,bowlerBalls:{},bowlerRuns:{},batterRuns:{},batterBalls:{},lastBalls:[],logs:[],superOverRound:0,pendingDecision:null,completed:false,battingAggression:{[a.id]:50,[b.id]:50},teamRowIds:{}};
+  match={room:r,a,b,innings:1,battingTeam:battingFirst,bowlingTeam:bowlingFirst,score:0,wickets:0,balls:0,target:null,first:null,order:[],striker:null,non:null,nextIndex:2,currentBowler:null,lastBowler:null,bowlerBalls:{},bowlerRuns:{},batterRuns:{},batterBalls:{},lastBalls:[],logs:[],superOverRound:0,pendingDecision:null,completed:false,battingAggression:{[a.id]:50,[b.id]:50},teamRowIds:{},engineMode:r.cloudId?"server-v1":"browser",engineActive:false,nextDeliveryAt:nowISO()};
   setInningsOrder()
 }
 function lineupForTeam(team){const r=match.room,sub=team.id===r.teamA?r.lineupA:r.lineupB;return sub||{xi:team.defaultXI,battingOrder:team.defaultXI}}
@@ -329,7 +404,7 @@ function thriller(o){if(!match.target||state.settings.thrill<45)return o;const l
 function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
 function setAutoStatus(text){if($("autoMatchStatus"))$("autoMatchStatus").textContent=text}
 async function waitAutoGap(){let left=Math.ceil(AUTO_BALL_GAP_MS/1000);while(left>0&&match&&!match.completed){if(paused){setAutoStatus("PAUSED");await sleep(250);continue}setAutoStatus(`AUTO • NEXT DELIVERY IN ${left}s`);await sleep(1000);if(!paused)left--}}
-function addCom(text,cls=""){match?.logs.push({text,cls,at:nowISO()});const e=$("commentaryFeed");e.innerHTML+=`<div class="com ${cls}">${esc(text)}</div>`;e.scrollTop=e.scrollHeight}
+function addCom(text,cls=""){match?.logs.push({text,cls,at:nowISO()});const e=$("commentaryFeed");if(e){e.innerHTML+=`<div class="com ${cls}">${esc(text)}</div>`;e.scrollTop=e.scrollHeight}if(match?.engineMode!=="server-v1"){playCricketSfx(cls||"ball");if(cls!=="system")setTimeout(()=>speakCommentary(text),430)}}
 function splash(text){$("eventSplash").textContent=text;$("eventSplash").classList.add("show");setTimeout(()=>$("eventSplash").classList.remove("show"),1100)}
 function stat(id){return state.playerStats[id]||(state.playerStats[id]={matches:0,runs:0,balls:0,wickets:0,conceded:0,fours:0,sixes:0,outs:0})}
 function updateHUD(){if(!match)return;$("hudScore").textContent=`${match.score}-${match.wickets}`;$("hudOvers").textContent=`${Math.floor(match.balls/6)}.${match.balls%6} OVERS`;$("hudRate").textContent=`RUN RATE ${match.balls?(match.score/(match.balls/6)).toFixed(2):"0.00"}`;$("hudStriker").textContent=(match.striker?.name||"—").toUpperCase();$("hudNon").textContent=(match.non?.name||"—").toUpperCase();$("hudStrikerRuns").textContent=`${match.batterRuns[match.striker?.id]||0} ${match.batterBalls[match.striker?.id]||0}`;$("hudBowler").textContent=(match.currentBowler?.name||"—").toUpperCase();const bid=match.currentBowler?.id;$("hudBowlingFigures").textContent=bid?`${match.bowlerRuns[bid]||0}-${0} (${((match.bowlerBalls[bid]||0)/6).toFixed(1)})`:"";$("lastBalls").innerHTML=match.lastBalls.slice(-6).map(x=>`<i>${x}</i>`).join("");$("activeRoleDisplay").textContent=state.localRole.toUpperCase();$("footerRole").textContent="ROLE: "+state.localRole.toUpperCase();renderManagerLiveDock()}
@@ -349,7 +424,7 @@ async function playBall(){if(!match||match.completed||ballLock||paused||state.lo
   updateHUD();await publishBallEvent(o,no);await publishMatchState();if(inningsDone())await endInnings();return true
 }finally{ballLock=false}}
 async function startAutoMatchLoop(){
-  if(!match||match.completed||state.localRole!=="host")return;const token=++autoLoopToken;paused=false;setAutoStatus("AUTO PLAY ACTIVE • 5s BETWEEN DELIVERIES");
+  if(!match||match.completed||state.localRole!=="host")return;if(match.engineMode==="server-v1"&&match.room?.cloudId){setAutoStatus("SERVER AUTO • ONLINE ENGINE ACTIVE");startSpectatorPolling();return;}const token=++autoLoopToken;paused=false;setAutoStatus("AUTO PLAY ACTIVE • 5s BETWEEN DELIVERIES");
   while(token===autoLoopToken&&match&&!match.completed&&state.localRole==="host"){
     if(paused){setAutoStatus("PAUSED");await sleep(250);continue}
     if(!match.currentBowler){await ensureCurrentBowler();if(token!==autoLoopToken||paused||!match||match.completed)continue}
@@ -365,12 +440,19 @@ async function superOver(){match.superOverRound++;const a=simulateSO(match.a),b=
 function simulateSO(team){let s=0,w=0;for(let i=0;i<6&&w<2;i++){const r=Math.random();if(r<.09)w++;else if(r<.28)s+=6;else if(r<.5)s+=4;else if(r<.75)s+=2;else s+=1}return s}
 function recordResult(result,so){const r=match.room;for(const id of [...new Set([...lineupForTeam(match.a).xi,...lineupForTeam(match.b).xi])])stat(id).matches++;state.history.push({date:nowISO(),competitionId:r.tournamentId,fixtureId:r.fixtureId,a:match.a.name,b:match.b.name,first:`${match.first.score}/${match.first.wickets}`,second:`${match.score}/${match.wickets}`,firstBalls:match.first.balls,secondBalls:match.balls,result,superOver:so,tied:so,managerA:r.managerA,managerB:r.managerB});state.profile.points+=10;if(r.tournamentId&&r.fixtureId){const c=C(r.tournamentId),f=c?.fixtures.find(x=>x.id===r.fixtureId);if(f){f.status="completed";f.result=result}}r.status="completed";save()}
 async function completeCloudMatch(result,so){localStorage.removeItem(ACTIVE_MATCH);autoLoopToken++;if(match.room.cloudId&&session)await api("/rest/v1/matches?id=eq."+match.room.cloudId,{method:"PATCH",body:JSON.stringify({status:"completed",result:{result,superOver:so,first:match.first,second:{score:match.score,wickets:match.wickets}},state:serializeMatch(),completed_at:nowISO(),updated_at:nowISO()})}).catch(()=>{})}
-function serializeMatch(){if(!match)return{};return{version:2,phase:match.completed?"completed":"live",innings:match.innings,score:match.score,wickets:match.wickets,balls:match.balls,target:match.target,battingTeam:match.battingTeam?.id,bowlingTeam:match.bowlingTeam?.id,order:(match.order||[]).map(p=>p?.id).filter(Boolean),striker:match.striker?.id,non:match.non?.id,nextIndex:match.nextIndex||2,bowler:match.currentBowler?.id,lastBowler:match.lastBowler,bowlerBalls:match.bowlerBalls||{},bowlerRuns:match.bowlerRuns||{},batterRuns:match.batterRuns||{},batterBalls:match.batterBalls||{},lastBalls:match.lastBalls||[],logs:(match.logs||[]).slice(-120),pendingDecision:match.pendingDecision,completed:!!match.completed,superOverRound:match.superOverRound||0,first:match.first?{team:match.first.team?.id||match.first.team,score:match.first.score,wickets:match.first.wickets,balls:match.first.balls}:null}}
+function serializeMatch(){
+  if(!match)return{};
+  const teams=[match.a,match.b].filter(Boolean),ids=[...new Set(teams.flatMap(t=>(lineupForTeam(t).xi||t.defaultXI||[])))];
+  const enginePlayers=ids.map(id=>P(id)).filter(Boolean).map(p=>({id:p.id,name:p.name,role:p.role,batting:p.batting,power:p.power,aggression:p.aggression,bowlingSkill:p.bowlingSkill,fielding:p.fielding,composure:p.composure}));
+  const lineups={},battingOrders={};for(const t of teams){const sub=lineupForTeam(t);lineups[t.id]=sub.xi||t.defaultXI||[];battingOrders[t.id]=sub.battingOrder||sub.xi||t.defaultXI||[]}
+  const teamNames={};for(const t of teams)teamNames[t.id]=t.name;
+  return{version:3,engineMode:match.engineMode||"browser",engineActive:!!match.engineActive,nextDeliveryAt:match.nextDeliveryAt||nowISO(),phase:match.completed?"completed":"live",innings:match.innings,score:match.score,wickets:match.wickets,balls:match.balls,target:match.target,battingTeam:match.battingTeam?.id,bowlingTeam:match.bowlingTeam?.id,order:(match.order||[]).map(p=>p?.id).filter(Boolean),striker:match.striker?.id,non:match.non?.id,nextIndex:match.nextIndex||2,bowler:match.currentBowler?.id,lastBowler:match.lastBowler,bowlerBalls:match.bowlerBalls||{},bowlerRuns:match.bowlerRuns||{},batterRuns:match.batterRuns||{},batterBalls:match.batterBalls||{},lastBalls:match.lastBalls||[],logs:(match.logs||[]).slice(-160),pendingDecision:match.pendingDecision,completed:!!match.completed,superOverRound:match.superOverRound||0,first:match.first?{team:match.first.team?.id||match.first.team,score:match.first.score,wickets:match.first.wickets,balls:match.first.balls}:null,battingAggression:match.battingAggression||{[match.a.id]:50,[match.b.id]:50},lineups,battingOrders,teamNames,enginePlayers,thrill:state.settings.thrill,tieChance:state.settings.tie}
+}
 function persistActiveMatchLocal(){if(match&&!match.completed)localStorage.setItem(ACTIVE_MATCH,JSON.stringify({room:match.room,state:serializeMatch(),savedAt:nowISO()}));else localStorage.removeItem(ACTIVE_MATCH)}
 function restoreMatchObject(room,s){
   if(!room||!s||!s.battingTeam)return null;const a=T(room.teamA),b=T(room.teamB);if(!a||!b)return null;
   const battingTeam=T(s.battingTeam)||a,bowlingTeam=T(s.bowlingTeam)||(battingTeam.id===a.id?b:a);
-  const restored={room,a,b,innings:+s.innings||1,battingTeam,bowlingTeam,score:+s.score||0,wickets:+s.wickets||0,balls:+s.balls||0,target:s.target==null?null:+s.target,first:s.first?{team:T(s.first.team)||a,score:+s.first.score||0,wickets:+s.first.wickets||0,balls:+s.first.balls||0}:null,order:(s.order||[]).map(P).filter(Boolean),striker:P(s.striker),non:P(s.non),nextIndex:+s.nextIndex||2,currentBowler:P(s.bowler),lastBowler:s.lastBowler||null,bowlerBalls:s.bowlerBalls||{},bowlerRuns:s.bowlerRuns||{},batterRuns:s.batterRuns||{},batterBalls:s.batterBalls||{},lastBalls:s.lastBalls||[],logs:s.logs||[],superOverRound:+s.superOverRound||0,pendingDecision:s.pendingDecision||null,completed:!!s.completed,battingAggression:s.battingAggression||{[a.id]:50,[b.id]:50},teamRowIds:{}};
+  const restored={room,a,b,innings:+s.innings||1,battingTeam,bowlingTeam,score:+s.score||0,wickets:+s.wickets||0,balls:+s.balls||0,target:s.target==null?null:+s.target,first:s.first?{team:T(s.first.team)||a,score:+s.first.score||0,wickets:+s.first.wickets||0,balls:+s.first.balls||0}:null,order:(s.order||[]).map(P).filter(Boolean),striker:P(s.striker),non:P(s.non),nextIndex:+s.nextIndex||2,currentBowler:P(s.bowler),lastBowler:s.lastBowler||null,bowlerBalls:s.bowlerBalls||{},bowlerRuns:s.bowlerRuns||{},batterRuns:s.batterRuns||{},batterBalls:s.batterBalls||{},lastBalls:s.lastBalls||[],logs:s.logs||[],superOverRound:+s.superOverRound||0,pendingDecision:s.pendingDecision||null,completed:!!s.completed,battingAggression:s.battingAggression||{[a.id]:50,[b.id]:50},teamRowIds:{},engineMode:s.engineMode||"browser",engineActive:s.engineActive!==false,nextDeliveryAt:s.nextDeliveryAt||nowISO(),resultText:s.resultText||""};
   if(!restored.order.length){const sub=room.lineupA&&battingTeam.id===room.teamA?room.lineupA:room.lineupB&&battingTeam.id===room.teamB?room.lineupB:null;restored.order=((sub?.battingOrder||sub?.xi||battingTeam.defaultXI)||[]).map(P).filter(Boolean)}
   restored.striker=restored.striker||restored.order[0];restored.non=restored.non||restored.order[1];return restored
 }
@@ -378,7 +460,7 @@ async function publishMatchState(){persistActiveMatchLocal();if(match?.room?.clo
 
 async function publishBallEvent(o,no){if(match?.room?.cloudId&&session&&state.localRole==="host")await api("/rest/v1/match_events",{method:"POST",body:JSON.stringify({match_id:match.room.cloudId,ball_no:no,event_type:o.wicket?"wicket":o.runs===6?"six":o.runs===4?"four":"ball",payload:{runs:o.runs||0,wicket:!!o.wicket,score:match.score,wickets:match.wickets,balls:match.balls,text:match.logs.at(-1)?.text}})}).catch(()=>{})}
 
-$("pauseBtn").addEventListener("click",()=>{paused=true;nav("pauseMenu")});qsa('[data-nav="liveMatch"]').forEach(b=>b.addEventListener("click",()=>{paused=false;if(state.localRole==="host"&&match&&!match.completed)startAutoMatchLoop()}));
+$("pauseBtn").addEventListener("click",()=>{paused=true;nav("pauseMenu")});qsa('[data-nav="liveMatch"]').forEach(b=>b.addEventListener("click",()=>{paused=false;if(match?.engineMode==="server-v1"&&match?.room?.cloudId)startSpectatorPolling();else if(state.localRole==="host"&&match&&!match.completed)startAutoMatchLoop()}));
 $("tacticBowler").addEventListener("click",()=>renderTactics("bowler"));$("tacticBatting").addEventListener("click",()=>renderTactics("batting"));$("tacticIntent").addEventListener("click",()=>renderTactics("intent"));
 function renderTactics(type="bowler"){$("tacticBowler").classList.toggle("selected",type==="bowler");$("tacticBatting").classList.toggle("selected",type==="batting");$("tacticIntent").classList.toggle("selected",type==="intent");if(!match){$("tacticsPanel").innerHTML='<div class="empty-state">No active match.</div>';return}if(type==="bowler"){const rows=availableBowlers().map(p=>`<div class="tactic-row actionable"><span>${esc(p.name)}</span><span>${((match.bowlerBalls[p.id]||0)/6).toFixed(1)}</span><span>${match.bowlerRuns[p.id]||0}</span><span>${p.ovr}</span><span>${esc(p.bowling)}</span><span>${85+Math.floor(Math.random()*15)}%</span><span>${35+Math.floor(Math.random()*60)}%</span><span>Strike</span></div>`).join("");$("tacticsPanel").innerHTML=`<div class="tactic-row header"><span>BOWLER</span><span>OVERS</span><span>RUNS</span><span>RATING</span><span>TYPE</span><span>STAMINA</span><span>CONF.</span><span>ARCHETYPE</span></div>${rows}`}else if(type==="batting"){const rest=match.order.slice(match.nextIndex);$("tacticsPanel").innerHTML=`<div class="tactic-row header"><span>BATTER</span><span>AVG</span><span>SR</span><span>RATING</span><span>TYPE</span><span>STAMINA</span><span>CONF.</span><span>ARCHETYPE</span></div>${rest.map(p=>`<div class="tactic-row actionable"><span>${esc(p.name)}</span><span>${(28+Math.random()*25).toFixed(2)}</span><span>${(115+Math.random()*55).toFixed(1)}</span><span>${p.ovr}</span><span>${p.hand}</span><span>100%</span><span>${35+Math.floor(Math.random()*60)}%</span><span>Attacker</span></div>`).join("")}`}else{$("tacticsPanel").innerHTML='<div class="panel"><h3>Team Intent</h3><p>Live batting aggression is controlled privately by the manager of the batting team. The Host and opposition cannot change it. The AI remains responsible for shot execution and outcomes.</p></div>'}}
 
@@ -393,8 +475,30 @@ $("watchMatchBtn").addEventListener("click",()=>watchByCode($("watchCode").value
 async function watchByCode(c){if(!c)return;if(cloudReady()){try{const rows=await api("/rest/v1/matches?share_code=eq."+encodeURIComponent(c)+"&select=*");if(!rows.length)return alert("Match not found.");const m=rows[0],prior=state.localRoom||{},keepManager=(state.localRole==="managerA"||state.localRole==="managerB")&&prior.cloudId===m.id;if(!keepManager)state.localRole="spectator";state.localRoom={...prior,id:m.id,cloudId:m.id,cloudTournamentId:m.tournament_id,teamA:m.team_a_local_id,teamB:m.team_b_local_id,shareCode:m.share_code,status:m.status,visibility:m.visibility,decisionTimer:ONLINE_MANAGER_TIMEOUT,liveState:m.state||{}};localStorage.setItem(SAVE,JSON.stringify(state));nav("liveMatch");syncSpectatorState(m);startSpectatorPolling()}catch(e){alert(e.message)}}else{const r=ensureLocalRoom();if(c!==r.shareCode)return alert("Local demo match code not found.");if(!(state.localRole==="managerA"||state.localRole==="managerB"))state.localRole="spectator";save();nav("liveMatch")}}
 function renderLiveList(){$("liveMatchList").innerHTML=state.localRoom?`<div class="live-row"><b>${esc(T(state.localRoom.teamA)?.name)} vs ${esc(T(state.localRoom.teamB)?.name)}</b><span>${esc(state.localRoom.status)}</span><span>${esc(state.localRoom.shareCode)}</span><button data-watch-local>WATCH</button></div>`:'<div class="empty-state">No local live match yet.</div>';qs("[data-watch-local]")?.addEventListener("click",()=>watchByCode(state.localRoom.shareCode))}
 function parseHash(){const m=location.hash.match(/#watch=([A-Z0-9-]+)/i);if(m){$("boot").classList.remove("active");$("app").classList.remove("hidden");$("watchCode").value=m[1].toUpperCase();nav("liveHub");setTimeout(()=>watchByCode(m[1].toUpperCase()),200)}}
-async function startSpectatorPolling(){clearInterval(cloudPoll);cloudPoll=setInterval(async()=>{const r=state.localRoom;if(!r?.cloudId)return;try{const rows=await api("/rest/v1/matches?id=eq."+r.cloudId+"&select=*");if(rows.length){r.status=rows[0].status;r.liveState=rows[0].state||{};syncSpectatorState(rows[0]);if(state.localRole==="managerA"||state.localRole==="managerB")handleRemoteManagerDecision(rows[0].state?.pendingDecision)}const ev=await api(`/rest/v1/match_events?match_id=eq.${r.cloudId}&order=id.desc&limit=20&select=*`);$("commentaryFeed").innerHTML=[...ev].reverse().map(e=>`<div class="com ${e.event_type}">${esc(e.payload?.text||e.event_type)}</div>`).join("");renderManagerLiveDock()}catch{}},2000)}
-function syncSpectatorState(m){const s=m.state||{};if(!match){const a=T(m.team_a_local_id),b=T(m.team_b_local_id);match={room:state.localRoom,a,b,battingTeam:T(s.battingTeam)||a,bowlingTeam:T(s.bowlingTeam)||b,score:s.score||0,wickets:s.wickets||0,balls:s.balls||0,target:s.target||null,striker:P(s.striker),non:P(s.non),currentBowler:P(s.bowler),lastBalls:s.lastBalls||[],batterRuns:{},batterBalls:{},bowlerRuns:{},bowlerBalls:{},logs:[],completed:s.completed}}else Object.assign(match,{score:s.score||0,wickets:s.wickets||0,balls:s.balls||0,target:s.target||null,battingTeam:T(s.battingTeam)||match.battingTeam,bowlingTeam:T(s.bowlingTeam)||match.bowlingTeam,striker:P(s.striker)||match.striker,non:P(s.non)||match.non,currentBowler:P(s.bowler)||match.currentBowler,lastBalls:s.lastBalls||[]});updateHUD();initThree()}
+async function startSpectatorPolling(){clearInterval(cloudPoll);cloudPoll=setInterval(async()=>{const r=state.localRoom;if(!r?.cloudId)return;try{const rows=await api("/rest/v1/matches?id=eq."+r.cloudId+"&select=*");if(rows.length){r.status=rows[0].status;r.liveState=rows[0].state||{};syncSpectatorState(rows[0]);if(state.localRole==="managerA"||state.localRole==="managerB")handleRemoteManagerDecision(rows[0].state?.pendingDecision)}const ev=await api(`/rest/v1/match_events?match_id=eq.${r.cloudId}&order=id.desc&limit=30&select=*`);
+      const ordered=[...ev].reverse();$("commentaryFeed").innerHTML=ordered.map(e=>`<div class="com ${e.event_type}">${esc(e.payload?.text||e.event_type)}</div>`).join("");
+      if(ordered.length){
+        const newest=ordered[ordered.length-1].id;
+        if(lastAudioEventId===null)lastAudioEventId=newest;
+        else{
+          for(const e of ordered)if(Number(e.id)>Number(lastAudioEventId))audioFromEvent(e);
+          lastAudioEventId=newest
+        }
+      }
+      renderManagerLiveDock()}catch{}},2000)}
+function syncSpectatorState(m){
+  const s=m.state||{},room=state.localRoom||match?.room;
+  if(s.version>=3&&room){
+    const restored=restoreMatchObject(room,s);if(restored)match=restored;
+  }else if(!match){
+    const a=T(m.team_a_local_id),b=T(m.team_b_local_id);match={room,a,b,battingTeam:T(s.battingTeam)||a,bowlingTeam:T(s.bowlingTeam)||b,score:s.score||0,wickets:s.wickets||0,balls:s.balls||0,target:s.target||null,striker:P(s.striker),non:P(s.non),currentBowler:P(s.bowler),lastBalls:s.lastBalls||[],batterRuns:{},batterBalls:{},bowlerRuns:{},bowlerBalls:{},logs:[],completed:s.completed}
+  }else Object.assign(match,{score:s.score||0,wickets:s.wickets||0,balls:s.balls||0,target:s.target||null,battingTeam:T(s.battingTeam)||match.battingTeam,bowlingTeam:T(s.bowlingTeam)||match.bowlingTeam,striker:P(s.striker)||match.striker,non:P(s.non)||match.non,currentBowler:P(s.bowler)||match.currentBowler,lastBalls:s.lastBalls||[]});
+  if(!s.pendingDecision){clearInterval(decisionTimerHandle);$("decisionModal")?.classList.add("hidden")}
+  if(match?.completed)setAutoStatus("MATCH COMPLETE"+(match.resultText?" • "+match.resultText:""));
+  else if(s.pendingDecision)setAutoStatus(s.pendingDecision.type==="next_bowler"?"WAITING FOR BOWLING MANAGER • 60s":"WAITING FOR BATTING MANAGER • 60s");
+  else if(s.engineMode==="server-v1")setAutoStatus("SERVER AUTO • 5s BETWEEN DELIVERIES");
+  updateHUD();initThree();renderManagerLiveDock()
+}
 
 
 function roleLabel(){
@@ -463,4 +567,4 @@ async function tween(obj,to,ms){const from=obj.position.clone(),s=performance.no
 async function animateDelivery(o){initThree();const t=three,k=.45;t.bowler.position.set(0,0,15);t.ball.position.set(0,1.8,14);t.bat.rotation.z=-.15;await tween(t.bowler,new THREE.Vector3(0,0,8.7),1500*k);await tween(t.ball,new THREE.Vector3(0,.22,-4),650*k);await tween(t.ball,new THREE.Vector3(.1,1,-7),300*k);t.bat.rotation.z=1.5;await sleep(200*k);if(o.wicket)await tween(t.ball,new THREE.Vector3(0,.6,-8.4),420*k);else{const pts=o.runs>=4?[[35,4,-31],[-39,.2,-18],[31,.2,30]]:[[13,.2,-10],[-12,.2,-7],[18,.2,6]],p=pts[Math.floor(Math.random()*pts.length)],target=new THREE.Vector3(...p);const nearest=t.fielders.reduce((a,b)=>a.position.distanceTo(target)<b.position.distanceTo(target)?a:b);tween(nearest,new THREE.Vector3(target.x*.75,0,target.z*.75),900*k);await tween(t.ball,target,900*k)}}
 
 function renderAll(){state.settings.timeout=ONLINE_MANAGER_TIMEOUT;renderPlayers();renderTeams();renderLineups();renderTournamentSelect();renderTournamentDashboard();renderMatchRoom();renderManagerHub();renderLiveList();renderPoints();renderStats();renderCareer();cloudUI();renderProfilePage();$("careerPoints").textContent=state.profile.points;$("thrillBias").value=state.settings.thrill;$("thrillLabel").textContent=state.settings.thrill;$("tieBias").value=state.settings.tie;$("tieLabel").textContent=state.settings.tie+"%";$("defaultManagerTimeout").value=ONLINE_MANAGER_TIMEOUT;$("managerControl").value=state.settings.managerControl?"on":"off";const resume=$("resumeLiveMatchTile");if(resume)resume.classList.toggle("hidden",!(match&&!match.completed&&state.localRole==="host"));const c=getCfg();$("supabaseUrl").value=c.url||"";$("supabaseKey").value=c.key||"";$("localRole").value=state.localRole}
-if(session&&cloudReady())state.localRole="spectator";renderAll();parseHash();if(session&&cloudReady()){pullProfile().then(refreshServerRole).then(discoverActiveHostMatch).then(()=>renderAll()).catch(()=>{});loadCloudLiveMatches();startRoomPolling()}
+if(session&&cloudReady())state.localRole="spectator";renderAll();renderAudioButtons();parseHash();if(session&&cloudReady()){pullProfile().then(refreshServerRole).then(discoverActiveHostMatch).then(()=>renderAll()).catch(()=>{});loadCloudLiveMatches();startRoomPolling()}

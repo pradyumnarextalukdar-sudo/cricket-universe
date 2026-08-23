@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#05070a">
 <title>Cricket Universe — Manager Online Alpha</title>
-<link rel="stylesheet" href="styles.css?v=20260823-autoresume1">
+<link rel="stylesheet" href="styles.css?v=20260823-serveraudio1">
 </head>
 <body>
 <div id="boot" class="boot active">
@@ -335,7 +335,13 @@
             <div class="score-center"><b id="hudScore">0-0</b><span id="hudOvers">0.0 OVERS</span><small id="hudRate">RUN RATE 0.00</small></div>
             <div class="bowler-hud"><b id="hudBowler">N. RAY</b><span id="hudBowlingFigures">0-0 (0.0)</span><div id="lastBalls" class="last-balls"></div></div>
           </div>
-          <div class="match-actions"><button id="pauseBtn">PAUSE</button><div id="autoMatchStatus" class="auto-match-status">AUTO PLAY • 5s BETWEEN DELIVERIES</div><div class="role-display">VIEW: <b id="activeRoleDisplay">HOST</b></div></div>
+          <div class="match-actions">
+            <button id="pauseBtn">MENU</button>
+            <button id="gameSoundToggle" class="audio-toggle" type="button">🔊 GAME SOUND ON</button>
+            <button id="voiceToggle" class="audio-toggle" type="button">🎙 COMMENTARY ON</button>
+            <div id="autoMatchStatus" class="auto-match-status">AUTO • 5s BETWEEN DELIVERIES</div>
+            <div class="role-display">VIEW: <b id="activeRoleDisplay">HOST</b></div>
+          </div>
           <div id="managerLiveAggression" class="manager-live-dock hidden">
             <div><b>YOUR BATTING AGGRESSION</b><span id="liveAggressionLabel">BALANCED • 50</span></div>
             <input id="liveAggressionSlider" type="range" min="0" max="100" step="1" value="50">
@@ -350,7 +356,7 @@
     <section id="pauseMenu" class="page pause-page">
       <div class="pause-backdrop"></div>
       <div class="pause-tiles">
-        <button data-nav="liveMatch" class="selected"><b>Resume</b><span>Return to game</span></button>
+        <button data-nav="liveMatch" class="selected"><b>Return to Live Match</b><span>The online match continues while this menu is open</span></button>
         <button data-nav="scorecard"><b>Scorecard</b><span>Full scorecard</span></button>
         <button><b>Simulate</b><span>Host only</span></button>
         <button><b>Replay</b><span>Replay centre</span></button>
@@ -490,6 +496,6 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 <script src="config.js"></script>
-<script type="module" src="app.js?v=20260823-autoresume1"></script>
+<script type="module" src="app.js?v=20260823-serveraudio1"></script>
 </body>
 </html>
