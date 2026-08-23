@@ -90,3 +90,27 @@ V9.1 STADIUM/CAMERA HOTFIX
 - Added a centred 17.7 x 3.15 match strip and crease markings.
 - No Supabase/SQL changes.
 - No model files changed.
+
+
+V9.2 FIELD GEOMETRY FIX
+WHY V9.1 STILL LOOKED WRONG
+- Three.js/GLTFLoader sanitizes imported node names.
+- V9.1 searched for a human-readable "Ground texture" node name.
+- That lookup failed in the browser.
+- The fallback measured the full outer stadium instead of the playable grass.
+- Result: the stadium stayed too small; camera/fielders remained outside the
+  field, showing cyan sky, floating floodlights/scoreboard and stand fragments.
+
+V9.2 FIX
+- Playable field is detected from mesh GEOMETRY, not node-name text.
+- Uses wide, flat, near-ground mesh selection.
+- Includes a verified source-field-size fallback (38.485951 units).
+- Stadium target playable diameter remains 82 match units.
+- Imported grass mesh is used for alignment then hidden.
+- Added guaranteed Cricket Universe grass outfield, mowing bands and boundary.
+- Added centred match pitch + crease lines.
+- SIX trajectory now reaches the correctly scaled seating/crowd zone.
+- Existing player, bowling, batting, keeper, umpire and fielding animation
+  system remains.
+- No model upload required.
+- No Supabase/SQL change.
