@@ -10,7 +10,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const SAVE="cu_v11_state", SESSION="cu_v11_session", CFG="cu_v11_cfg";
 const nowISO=()=>new Date().toISOString();
 
-let state=loadState(), session=loadJSON(SESSION,null), currentPage="home", activeFixtureId=null, match=null, three=null, paused=false, ballLock=false, cloudPoll=null, decisionTimerHandle=null;
+let state=loadState(), session=loadJSON(SESSION,null), serverRole=null, currentPage="home", activeFixtureId=null, match=null, three=null, paused=false, ballLock=false, cloudPoll=null, decisionTimerHandle=null;
 
 function loadJSON(k,d){try{return JSON.parse(localStorage.getItem(k)||"null")??d}catch{return d}}
 function baseState(){return{profile:{name:"Guest",points:0},settings:{thrill:90,tie:5,timeout:30,managerControl:true},players:[],teams:[],competitions:[],history:[],playerStats:{},localRole:"host",localRoom:null}}
@@ -23,7 +23,21 @@ async function api(path,opt={}){if(!cloudReady())throw new Error("Cloud is not c
 let syncDebounce;
 function queueProfileSync(){clearTimeout(syncDebounce);if(session&&cloudReady())syncDebounce=setTimeout(()=>pushProfile().catch(()=>{}),1000)}
 async function pushProfile(){if(!session?.user?.id)return;await api("/rest/v1/profiles?on_conflict=user_id",{method:"POST",headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({user_id:session.user.id,data:state,updated_at:nowISO()})});cloudUI(true)}
-async function pullProfile(){if(!session?.user?.id)return;const rows=await api("/rest/v1/profiles?user_id=eq."+encodeURIComponent(session.user.id)+"&select=data");if(rows?.[0]?.data){state=Object.assign(baseState(),rows[0].data);localStorage.setItem(SAVE,JSON.stringify(state));renderAll()}else await pushProfile()}
+async function pullProfile(){if(!session?.user?.id)return;const rows=await api("/rest/v1/profiles?user_id=eq."+encodeURIComponent(session.user.id)+"&select=data");if(rows?.[0]?.data){state=Object.assign(baseState(),rows[0].data);if(cloudReady())state.localRole="spectator";localStorage.setItem(SAVE,JSON.stringify(state));renderAll()}else await pushProfile()}
+async function refreshServerRole(){
+  if(!session?.user?.id||!cloudReady()){serverRole=null;return}
+  const rows=await api("/rest/v1/user_roles?user_id=eq."+encodeURIComponent(session.user.id)+"&select=role");
+  serverRole=rows?.[0]?.role||"spectator";
+  if(serverRole==="admin"){
+    state.localRole="host";
+    localStorage.setItem(SAVE,JSON.stringify(state));
+    return;
+  }
+  state.localRole="spectator";
+  localStorage.setItem(SAVE,JSON.stringify(state));
+  await loadRoomFromCloudByManager().catch(()=>{});
+}
+
 
 function generateDemo(){
   const teams=[["Aurora XI","#1b8065"],["Nova XI","#1970cc"],["Titan XI","#b46826"],["Orion XI","#7649c5"],["Harbour XI","#23768a"],["Metro XI","#bd3e70"],["Falcon XI","#7c8b2a"],["Summit XI","#9c4a33"]];
@@ -96,10 +110,10 @@ function renderMatchRoom(){
 $("roomDecisionTimer").addEventListener("change",()=>{const r=ensureLocalRoom();r.decisionTimer=+$("roomDecisionTimer").value;save()});$("matchVisibility").addEventListener("change",()=>{const r=ensureLocalRoom();r.visibility=$("matchVisibility").value;save()});
 
 function currentDemoRole(){return state.localRole}
-$("localRole").addEventListener("change",()=>{state.localRole=$("localRole").value;save();renderManagerHub()});
+$("localRole").addEventListener("change",()=>{if(session&&cloudReady()){alert("Online roles are assigned securely by the server.");renderAll();return}state.localRole=$("localRole").value;save();renderManagerHub()});
 function localManagerTeam(){const r=ensureLocalRoom();if(state.localRole==="managerA")return T(r.teamA);if(state.localRole==="managerB")return T(r.teamB);return null}
 function renderManagerHub(){
-  $("localRole").value=state.localRole;const team=localManagerTeam(),r=ensureLocalRoom();
+  $("localRole").value=state.localRole;const demoRoleBox=$("localRole").closest(".demo-role");if(demoRoleBox)demoRoleBox.style.display=(session&&cloudReady())?"none":"";const team=localManagerTeam(),r=ensureLocalRoom();
   if(!team){
     $("myManagedTeam").textContent=state.localRole==="host"?"Host / Administrator":state.localRole==="spectator"?"Spectator":"No team claimed";
     $("managerWorkspace").innerHTML=state.localRole==="host"?'<div class="empty-state">Host creates tournaments, starts matches and can view all data.</div>':state.localRole==="spectator"?'<div class="empty-state">Spectators can watch live matches, points tables and statistics. They cannot control a team.</div>':'<div class="empty-state">Claim a team code to continue.</div>';
@@ -133,7 +147,7 @@ function renderManagerHub(){
   })
 }
 
-$("claimManagerBtn").addEventListener("click",async()=>{const c=$("claimManagerCode").value.trim().toUpperCase();if(!c)return;if(session&&cloudReady()){try{const res=await api("/rest/v1/rpc/claim_manager_code",{method:"POST",body:JSON.stringify({p_code:c})});alert("Team claimed.");await pullProfile().catch(()=>{});await loadRoomFromCloudByManager().catch(()=>{});renderManagerHub()}catch(e){alert(e.message)}}else{const r=ensureLocalRoom();if(c===r.managerCodeA){state.localRole="managerA";r.managerA="Local Manager A"}else if(c===r.managerCodeB){state.localRole="managerB";r.managerB="Local Manager B"}else return alert("Manager code not found in local demo.");save();renderManagerHub();renderMatchRoom()}});
+$("claimManagerBtn").addEventListener("click",async()=>{const c=$("claimManagerCode").value.trim().toUpperCase();if(!c)return;if(session&&cloudReady()){if(serverRole==="admin")return alert("Administrator account cannot claim a manager team.");try{const res=await api("/rest/v1/rpc/claim_manager_code",{method:"POST",body:JSON.stringify({p_code:c})});alert("Team claimed.");await pullProfile().catch(()=>{});await loadRoomFromCloudByManager().catch(()=>{});renderManagerHub()}catch(e){alert(e.message)}}else{const r=ensureLocalRoom();if(c===r.managerCodeA){state.localRole="managerA";r.managerA="Local Manager A"}else if(c===r.managerCodeB){state.localRole="managerB";r.managerB="Local Manager B"}else return alert("Manager code not found in local demo.");save();renderManagerHub();renderMatchRoom()}});
 
 async function createOnlineRoom(){
   if(!session||!cloudReady())return alert("Sign in and configure Supabase first. Local room is still usable for testing.");
@@ -280,11 +294,11 @@ function parseHash(){const m=location.hash.match(/#watch=([A-Z0-9-]+)/i);if(m){$
 async function startSpectatorPolling(){clearInterval(cloudPoll);cloudPoll=setInterval(async()=>{const r=state.localRoom;if(!r?.cloudId)return;try{const rows=await api("/rest/v1/matches?id=eq."+r.cloudId+"&select=*");if(rows.length)syncSpectatorState(rows[0]);const ev=await api(`/rest/v1/match_events?match_id=eq.${r.cloudId}&order=id.desc&limit=20&select=*`);$("commentaryFeed").innerHTML=[...ev].reverse().map(e=>`<div class="com ${e.event_type}">${esc(e.payload?.text||e.event_type)}</div>`).join("")}catch{}},2000)}
 function syncSpectatorState(m){const s=m.state||{};if(!match){const a=T(m.team_a_local_id),b=T(m.team_b_local_id);match={room:state.localRoom,a,b,battingTeam:T(s.battingTeam)||a,bowlingTeam:T(s.bowlingTeam)||b,score:s.score||0,wickets:s.wickets||0,balls:s.balls||0,target:s.target||null,striker:P(s.striker),non:P(s.non),currentBowler:P(s.bowler),lastBalls:s.lastBalls||[],batterRuns:{},batterBalls:{},bowlerRuns:{},bowlerBalls:{},logs:[],completed:s.completed}}else Object.assign(match,{score:s.score||0,wickets:s.wickets||0,balls:s.balls||0,target:s.target||null,battingTeam:T(s.battingTeam)||match.battingTeam,bowlingTeam:T(s.bowlingTeam)||match.bowlingTeam,striker:P(s.striker)||match.striker,non:P(s.non)||match.non,currentBowler:P(s.bowler)||match.currentBowler,lastBalls:s.lastBalls||[]});updateHUD();initThree()}
 
-function cloudUI(ok=false){const on=!!session&&cloudReady();$("cloudBadge").textContent=on?"CLOUD SYNC":"LOCAL MODE";$("cloudBadge").classList.toggle("amber",!on);$("signedOutBox").classList.toggle("hidden",!!session);$("signedInBox").classList.toggle("hidden",!session);if(session){$("signedEmail").textContent=session.user?.email||"Signed in";$("userName").textContent=(session.user?.email||"User").split("@")[0];$("userState").textContent="Private cloud account";$("userAvatar").textContent=$("userName").textContent[0].toUpperCase()}else{$("userName").textContent=state.profile.name;$("userState").textContent="Preview profile";$("userAvatar").textContent=(state.profile.name[0]||"G").toUpperCase()}}
+function cloudUI(ok=false){const on=!!session&&cloudReady();$("cloudBadge").textContent=on?"CLOUD SYNC":"LOCAL MODE";$("cloudBadge").classList.toggle("amber",!on);$("signedOutBox").classList.toggle("hidden",!!session);$("signedInBox").classList.toggle("hidden",!session);if(session){$("signedEmail").textContent=session.user?.email||"Signed in";$("userName").textContent=(session.user?.email||"User").split("@")[0];const roleLabel=serverRole==="admin"?"Administrator":state.localRole==="managerA"||state.localRole==="managerB"?"Team Manager":"Spectator";$("userState").textContent=roleLabel+" • Private cloud account";$("userAvatar").textContent=$("userName").textContent[0].toUpperCase()}else{$("userName").textContent=state.profile.name;$("userState").textContent="Preview profile";$("userAvatar").textContent=(state.profile.name[0]||"G").toUpperCase()}}
 $("saveCloudConfig").addEventListener("click",()=>{localStorage.setItem(CFG,JSON.stringify({url:$("supabaseUrl").value.trim().replace(/\/$/,""),key:$("supabaseKey").value.trim()}));cloudUI();alert("Cloud configuration saved.")});
-$("signUpBtn").addEventListener("click",async()=>{try{const email=$("authEmail").value.trim(),password=$("authPass").value;if(password.length<6)throw new Error("Password must be at least 6 characters.");const r=await api("/auth/v1/signup",{method:"POST",body:JSON.stringify({email,password})});if(r.access_token){session={access_token:r.access_token,refresh_token:r.refresh_token,user:r.user};localStorage.setItem(SESSION,JSON.stringify(session));await pushProfile();renderAll()}else alert("Account created. Confirm your email if confirmation is enabled.")}catch(e){alert(e.message)}});
-$("signInBtn").addEventListener("click",async()=>{try{const r=await api("/auth/v1/token?grant_type=password",{method:"POST",body:JSON.stringify({email:$("authEmail").value.trim(),password:$("authPass").value})});session={access_token:r.access_token,refresh_token:r.refresh_token,user:r.user};localStorage.setItem(SESSION,JSON.stringify(session));await pullProfile();renderAll()}catch(e){alert(e.message)}});
-$("signOutBtn").addEventListener("click",()=>{session=null;localStorage.removeItem(SESSION);renderAll()});$("syncNowBtn").addEventListener("click",()=>pushProfile().then(()=>alert("Synced.")).catch(e=>alert(e.message)));
+$("signUpBtn").addEventListener("click",async()=>{try{const email=$("authEmail").value.trim(),password=$("authPass").value;if(password.length<6)throw new Error("Password must be at least 6 characters.");const r=await api("/auth/v1/signup",{method:"POST",body:JSON.stringify({email,password})});if(r.access_token){session={access_token:r.access_token,refresh_token:r.refresh_token,user:r.user};localStorage.setItem(SESSION,JSON.stringify(session));await refreshServerRole();await pushProfile();renderAll()}else alert("Account created. Confirm your email if confirmation is enabled.")}catch(e){alert(e.message)}});
+$("signInBtn").addEventListener("click",async()=>{try{const r=await api("/auth/v1/token?grant_type=password",{method:"POST",body:JSON.stringify({email:$("authEmail").value.trim(),password:$("authPass").value})});session={access_token:r.access_token,refresh_token:r.refresh_token,user:r.user};localStorage.setItem(SESSION,JSON.stringify(session));await pullProfile();await refreshServerRole();renderAll()}catch(e){alert(e.message)}});
+$("signOutBtn").addEventListener("click",()=>{session=null;serverRole=null;state.localRole="host";localStorage.setItem(SAVE,JSON.stringify(state));localStorage.removeItem(SESSION);renderAll()});$("syncNowBtn").addEventListener("click",()=>pushProfile().then(()=>alert("Synced.")).catch(e=>alert(e.message)));
 
 $("thrillBias").addEventListener("input",()=>{state.settings.thrill=+$("thrillBias").value;$("thrillLabel").textContent=state.settings.thrill;save()});$("tieBias").addEventListener("input",()=>{state.settings.tie=+$("tieBias").value;$("tieLabel").textContent=state.settings.tie+"%";save()});$("defaultManagerTimeout").addEventListener("change",()=>{state.settings.timeout=+$("defaultManagerTimeout").value;save()});$("managerControl").addEventListener("change",()=>{state.settings.managerControl=$("managerControl").value==="on";save()});
 
@@ -295,4 +309,4 @@ async function tween(obj,to,ms){const from=obj.position.clone(),s=performance.no
 async function animateDelivery(o){initThree();const t=three,k=$("paceSelect").value==="real"?1:.35;t.bowler.position.set(0,0,15);t.ball.position.set(0,1.8,14);t.bat.rotation.z=-.15;await tween(t.bowler,new THREE.Vector3(0,0,8.7),1500*k);await tween(t.ball,new THREE.Vector3(0,.22,-4),650*k);await tween(t.ball,new THREE.Vector3(.1,1,-7),300*k);t.bat.rotation.z=1.5;await sleep(200*k);if(o.wicket)await tween(t.ball,new THREE.Vector3(0,.6,-8.4),420*k);else{const pts=o.runs>=4?[[35,4,-31],[-39,.2,-18],[31,.2,30]]:[[13,.2,-10],[-12,.2,-7],[18,.2,6]],p=pts[Math.floor(Math.random()*pts.length)],target=new THREE.Vector3(...p);const nearest=t.fielders.reduce((a,b)=>a.position.distanceTo(target)<b.position.distanceTo(target)?a:b);tween(nearest,new THREE.Vector3(target.x*.75,0,target.z*.75),900*k);await tween(t.ball,target,900*k)}}
 
 function renderAll(){renderPlayers();renderTeams();renderLineups();renderTournamentSelect();renderTournamentDashboard();renderMatchRoom();renderManagerHub();renderLiveList();renderPoints();renderStats();renderCareer();cloudUI();$("careerPoints").textContent=state.profile.points;$("thrillBias").value=state.settings.thrill;$("thrillLabel").textContent=state.settings.thrill;$("tieBias").value=state.settings.tie;$("tieLabel").textContent=state.settings.tie+"%";$("defaultManagerTimeout").value=state.settings.timeout;$("managerControl").value=state.settings.managerControl?"on":"off";const c=getCfg();$("supabaseUrl").value=c.url||"";$("supabaseKey").value=c.key||"";$("localRole").value=state.localRole}
-renderAll();parseHash();if(session&&cloudReady()){pullProfile().catch(()=>{});loadCloudLiveMatches();startRoomPolling()}
+if(session&&cloudReady())state.localRole="spectator";renderAll();parseHash();if(session&&cloudReady()){pullProfile().then(refreshServerRole).then(renderAll).catch(()=>{});loadCloudLiveMatches();startRoomPolling()}
