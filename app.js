@@ -21,25 +21,132 @@ function save(){localStorage.setItem(SAVE,JSON.stringify(state));renderAll();que
 function getCfg(){const s=loadJSON(CFG,{}),w=window.CRICKET_UNIVERSE_CONFIG||{};return{url:s.url||w.supabaseUrl||"",key:s.key||w.supabaseAnonKey||""}}
 function cloudReady(){const c=getCfg();return /^https:\/\/.+\.supabase\.co$/.test(c.url)&&c.key.length>40}
 function headers(token){const c=getCfg();return{"apikey":c.key,"Authorization":"Bearer "+(token||c.key),"Content-Type":"application/json"}}
-async function api(path,opt={}){if(!cloudReady())throw new Error("Cloud is not configured.");const c=getCfg();const r=await fetch(c.url+path,{...opt,headers:{...headers(opt.token||session?.access_token),...(opt.headers||{})}});const txt=await r.text();let j;try{j=txt?JSON.parse(txt):null}catch{j=txt}if(!r.ok)throw new Error(j?.message||j?.msg||j?.error_description||"Cloud request failed");return j}
+
+function jwtExpiryMs(token){
+  try{
+    const part=token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+    const pad="=".repeat((4-part.length%4)%4);
+    const payload=JSON.parse(decodeURIComponent(escape(atob(part+pad))));
+    return Number(payload.exp||0)*1000;
+  }catch{return 0}
+}
+
+async function refreshAuthSession(force=false){
+  if(!session?.refresh_token||!cloudReady())return false;
+  const exp=jwtExpiryMs(session.access_token||"");
+  if(!force&&exp&&exp>Date.now()+120000)return true;
+
+  const c=getCfg();
+  const r=await fetch(c.url+"/auth/v1/token?grant_type=refresh_token",{
+    method:"POST",
+    headers:{
+      "apikey":c.key,
+      "Authorization":"Bearer "+c.key,
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify({refresh_token:session.refresh_token})
+  });
+
+  const txt=await r.text();
+  let j;
+  try{j=txt?JSON.parse(txt):null}catch{j=null}
+  if(!r.ok||!j?.access_token){
+    if(r.status===400||r.status===401){
+      session=null;
+      serverRole=null;
+      localStorage.removeItem(SESSION);
+      renderAll();
+    }
+    throw new Error(j?.message||j?.error_description||"Your cloud session could not be refreshed.");
+  }
+
+  session={
+    access_token:j.access_token,
+    refresh_token:j.refresh_token||session.refresh_token,
+    user:j.user||session.user
+  };
+  localStorage.setItem(SESSION,JSON.stringify(session));
+  return true;
+}
+
+async function api(path,opt={}){
+  if(!cloudReady())throw new Error("Cloud is not configured.");
+  const c=getCfg();
+  const token=opt.token||session?.access_token;
+  const requestOpt={...opt};
+  delete requestOpt.token;
+  delete requestOpt._retried;
+
+  let r=await fetch(c.url+path,{
+    ...requestOpt,
+    headers:{...headers(token),...(opt.headers||{})}
+  });
+
+  if(r.status===401&&session?.refresh_token&&!opt._retried&&!path.includes("/auth/v1/token")){
+    await refreshAuthSession(true);
+    return api(path,{...opt,_retried:true,token:session?.access_token});
+  }
+
+  const txt=await r.text();
+  let j;
+  try{j=txt?JSON.parse(txt):null}catch{j=txt}
+  if(!r.ok)throw new Error(j?.message||j?.msg||j?.error_description||"Cloud request failed");
+  return j
+}
 let syncDebounce;
 function queueProfileSync(){clearTimeout(syncDebounce);if(session&&cloudReady())syncDebounce=setTimeout(()=>pushProfile().catch(()=>{}),1000)}
 async function pushProfile(){if(!session?.user?.id)return;await api("/rest/v1/profiles?on_conflict=user_id",{method:"POST",headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({user_id:session.user.id,data:state,updated_at:nowISO()})});cloudUI(true)}
-async function pullProfile(){if(!session?.user?.id)return;const rows=await api("/rest/v1/profiles?user_id=eq."+encodeURIComponent(session.user.id)+"&select=data");if(rows?.[0]?.data){state=Object.assign(baseState(),rows[0].data);if(cloudReady())state.localRole="spectator";localStorage.setItem(SAVE,JSON.stringify(state));renderAll()}else await pushProfile()}
+async function pullProfile(){if(!session?.user?.id)return;const rows=await api("/rest/v1/profiles?user_id=eq."+encodeURIComponent(session.user.id)+"&select=data");if(rows?.[0]?.data){state=Object.assign(baseState(),rows[0].data);if(cloudReady()&&serverRole!=="admin")state.localRole="spectator";localStorage.setItem(SAVE,JSON.stringify(state));renderAll()}else await pushProfile()}
 async function refreshServerRole(){
   if(!session?.user?.id||!cloudReady()){serverRole=null;return}
-  const rows=await api("/rest/v1/user_roles?user_id=eq."+encodeURIComponent(session.user.id)+"&select=role");
-  serverRole=rows?.[0]?.role||"spectator";
-  if(serverRole==="admin"){
-    state.localRole="host";
-    localStorage.setItem(SAVE,JSON.stringify(state));
-    return;
-  }
-  state.localRole="spectator";
-  localStorage.setItem(SAVE,JSON.stringify(state));
-  await loadRoomFromCloudByManager().catch(()=>{});
-}
 
+  serverRole="checking";
+  cloudUI();
+
+  try{
+    await refreshAuthSession(false);
+
+    // First use the protected server-side admin function.
+    let isAdmin=false;
+    try{
+      const rpc=await api("/rest/v1/rpc/is_game_admin",{
+        method:"POST",
+        body:"{}"
+      });
+      isAdmin=rpc===true;
+    }catch{}
+
+    // Also read the user's own role row. This preserves future role expansion.
+    let roleRow=null;
+    try{
+      const rows=await api(
+        "/rest/v1/user_roles?user_id=eq."
+        +encodeURIComponent(session.user.id)
+        +"&select=role"
+      );
+      roleRow=rows?.[0]?.role||null;
+    }catch{}
+
+    serverRole=isAdmin?"admin":(roleRow||"spectator");
+
+    if(serverRole==="admin"){
+      state.localRole="host";
+      localStorage.setItem(SAVE,JSON.stringify(state));
+      return;
+    }
+
+    state.localRole="spectator";
+    localStorage.setItem(SAVE,JSON.stringify(state));
+    await loadRoomFromCloudByManager().catch(()=>{});
+
+  }catch(e){
+    // Do not falsely label an account Spectator when authentication failed.
+    serverRole="unavailable";
+    state.localRole="spectator";
+    localStorage.setItem(SAVE,JSON.stringify(state));
+    console.warn("Role refresh failed:",e);
+  }
+}
 
 function generateDemo(){
   const teams=[["Aurora XI","#1b8065"],["Nova XI","#1970cc"],["Titan XI","#b46826"],["Orion XI","#7649c5"],["Harbour XI","#23768a"],["Metro XI","#bd3e70"],["Falcon XI","#7c8b2a"],["Summit XI","#9c4a33"]];
@@ -503,6 +610,8 @@ function syncSpectatorState(m){
 
 function roleLabel(){
   if(serverRole==="admin")return "Administrator";
+  if(serverRole==="checking")return "Checking account role…";
+  if(serverRole==="unavailable")return "Cloud role unavailable";
   if(state.localRole==="managerA"||state.localRole==="managerB")return "Team Manager";
   return session?"Spectator":"Guest";
 }
@@ -567,4 +676,48 @@ async function tween(obj,to,ms){const from=obj.position.clone(),s=performance.no
 async function animateDelivery(o){initThree();const t=three,k=.45;t.bowler.position.set(0,0,15);t.ball.position.set(0,1.8,14);t.bat.rotation.z=-.15;await tween(t.bowler,new THREE.Vector3(0,0,8.7),1500*k);await tween(t.ball,new THREE.Vector3(0,.22,-4),650*k);await tween(t.ball,new THREE.Vector3(.1,1,-7),300*k);t.bat.rotation.z=1.5;await sleep(200*k);if(o.wicket)await tween(t.ball,new THREE.Vector3(0,.6,-8.4),420*k);else{const pts=o.runs>=4?[[35,4,-31],[-39,.2,-18],[31,.2,30]]:[[13,.2,-10],[-12,.2,-7],[18,.2,6]],p=pts[Math.floor(Math.random()*pts.length)],target=new THREE.Vector3(...p);const nearest=t.fielders.reduce((a,b)=>a.position.distanceTo(target)<b.position.distanceTo(target)?a:b);tween(nearest,new THREE.Vector3(target.x*.75,0,target.z*.75),900*k);await tween(t.ball,target,900*k)}}
 
 function renderAll(){state.settings.timeout=ONLINE_MANAGER_TIMEOUT;renderPlayers();renderTeams();renderLineups();renderTournamentSelect();renderTournamentDashboard();renderMatchRoom();renderManagerHub();renderLiveList();renderPoints();renderStats();renderCareer();cloudUI();renderProfilePage();$("careerPoints").textContent=state.profile.points;$("thrillBias").value=state.settings.thrill;$("thrillLabel").textContent=state.settings.thrill;$("tieBias").value=state.settings.tie;$("tieLabel").textContent=state.settings.tie+"%";$("defaultManagerTimeout").value=ONLINE_MANAGER_TIMEOUT;$("managerControl").value=state.settings.managerControl?"on":"off";const resume=$("resumeLiveMatchTile");if(resume)resume.classList.toggle("hidden",!(match&&!match.completed&&state.localRole==="host"));const c=getCfg();$("supabaseUrl").value=c.url||"";$("supabaseKey").value=c.key||"";$("localRole").value=state.localRole}
-if(session&&cloudReady())state.localRole="spectator";renderAll();renderAudioButtons();parseHash();if(session&&cloudReady()){pullProfile().then(refreshServerRole).then(discoverActiveHostMatch).then(()=>renderAll()).catch(()=>{});loadCloudLiveMatches();startRoomPolling()}
+if(session&&cloudReady()){
+  state.localRole="spectator";
+  serverRole="checking";
+}
+renderAll();
+renderAudioButtons();
+parseHash();
+
+if(session&&cloudReady()){
+  (async()=>{
+    try{
+      await refreshAuthSession(false);
+      await pullProfile();
+      await refreshServerRole();
+      await discoverActiveHostMatch();
+      renderAll();
+    }catch(e){
+      console.warn("Cloud startup refresh failed:",e);
+      if(session)serverRole="unavailable";
+      renderAll();
+    }
+  })();
+
+  loadCloudLiveMatches();
+  startRoomPolling();
+
+  // Keep long-running manager/admin sessions healthy.
+  setInterval(async()=>{
+    if(!session||!cloudReady())return;
+    try{
+      await refreshAuthSession(false);
+      await refreshServerRole();
+      renderAll();
+    }catch{}
+  },300000);
+
+  document.addEventListener("visibilitychange",async()=>{
+    if(document.visibilityState!=="visible"||!session||!cloudReady())return;
+    try{
+      await refreshAuthSession(false);
+      await refreshServerRole();
+      renderAll();
+    }catch{}
+  });
+}

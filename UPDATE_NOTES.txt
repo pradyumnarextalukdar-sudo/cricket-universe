@@ -1,21 +1,19 @@
-CRICKET UNIVERSE V1.3 — SERVER AUTO + AUDIO
+CRICKET UNIVERSE V1.3.1 AUTH/ROLE HOTFIX
 
-WHAT CHANGED
-- Online match engine moves from the Host browser to Supabase Cron.
-- Online matches keep progressing if Chrome is backgrounded, the screen is locked,
-  another app is opened, or the Host closes Chrome.
-- Automatic 5-second delivery cadence.
-- 60-second next-bowler / incoming-batter manager decision windows.
-- AI fallback after timeout.
-- Batting manager's private aggression setting is read before every delivery.
-- Synthetic bowling, bat impact, fielding, boundary/crowd and wicket sounds.
-- Spoken ball-by-ball commentary using the device/browser's available English voice.
-- Separate GAME SOUND and COMMENTARY voice toggles.
-- The in-game MENU does not stop an online match; it only changes the local view.
+Fixes:
+- Supabase access tokens are automatically refreshed.
+- HTTP 401 cloud calls retry once after refreshing the session.
+- Administrator role is re-verified through the protected is_game_admin() RPC.
+- Own user_roles row is also checked as a secondary role source.
+- Signed-in users show 'Checking account role…' during startup instead of being
+  incorrectly displayed as Spectator.
+- A failed network/auth lookup shows 'Cloud role unavailable' rather than
+  incorrectly demoting the UI to Spectator.
+- Session/role refresh runs periodically and whenever the browser becomes visible.
+- Existing V1.3 server-auto match engine and audio remain unchanged.
 
-IMPORTANT
-- Run server_engine_v13.sql once in Supabase SQL Editor before starting a NEW online match.
-- Existing live matches created by V1.2 should be ended/recreated for the server engine.
-- Audio and 3D animation cannot literally play while the browser/app is hidden, because the
-  operating system controls foreground media/rendering. The MATCH itself continues on Supabase.
-  When the user returns, the latest score/state is shown and future sounds/commentary resume.
+Upload to GitHub:
+- app.js
+- index.html
+(styles.css is included but unchanged.)
+No new SQL is required.
