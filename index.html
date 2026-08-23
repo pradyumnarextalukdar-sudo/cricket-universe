@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#05070a">
 <title>Cricket Universe — Manager Online Alpha</title>
-<link rel="stylesheet" href="styles.css?v=20260823-profile1">
+<link rel="stylesheet" href="styles.css?v=20260823-autoresume1">
 </head>
 <body>
 <div id="boot" class="boot active">
   <div class="boot-graphic"></div>
   <div class="boot-logo">CRICKET <span>UNIVERSE</span></div>
-  <div class="boot-kicker">MANAGER ONLINE • V1.1 ALPHA</div>
+  <div class="boot-kicker">MANAGER ONLINE • V1.2 ALPHA</div>
   <button id="enterGame">PRESS TO CONTINUE</button>
 </div>
 
@@ -62,6 +62,7 @@
       </div>
 
       <div class="tile-strip six">
+        <button id="resumeLiveMatchTile" class="menu-tile resume-live hidden"><b>RESUME LIVE MATCH</b><span>Continue from the last saved delivery</span></button>
         <button class="menu-tile selected" data-nav="quickMatch"><b>PLAY NOW</b><span>Host a single match</span></button>
         <button class="menu-tile" data-nav="competitions"><b>COMPETITIONS</b><span>Create tournaments</span></button>
         <button class="menu-tile" data-nav="managerHub"><b>MANAGER HUB</b><span>Claim & manage a team</span></button>
@@ -101,7 +102,7 @@
           <div class="setting"><label>Points For Win</label><input id="compWinPts" type="number" value="2"></div>
           <div class="setting"><label>Points For Tie / NR</label><input id="compTiePts" type="number" value="1"></div>
           <div class="setting"><label>Super Over</label><select id="compSuperOver"><option>Enabled</option><option>Disabled</option></select></div>
-          <div class="setting"><label>Manager Decision Timer</label><select id="decisionTimer"><option value="15">15 sec</option><option value="30" selected>30 sec</option><option value="60">60 sec</option></select></div>
+          <div class="setting"><label>Manager Decision Timer</label><select id="decisionTimer" disabled><option value="60" selected>60 sec (fixed)</option></select></div>
           <button id="saveCompetition" class="white-action">SAVE</button>
         </div>
         <div class="trophy-stage">
@@ -264,7 +265,7 @@
         <div class="room-center">
           <div class="versus">VS</div>
           <label>Match visibility</label><select id="matchVisibility"><option value="public">Public spectator link</option><option value="private">Private</option></select>
-          <label>Manager decision timeout</label><select id="roomDecisionTimer"><option value="15">15 seconds</option><option selected value="30">30 seconds</option><option value="60">60 seconds</option></select>
+          <label>Manager decision timeout</label><select id="roomDecisionTimer" disabled><option selected value="60">60 seconds (fixed)</option></select>
           <button id="createOnlineRoom" class="white-action">CREATE / SYNC ONLINE ROOM</button>
           <button id="hostStartMatch" class="primary-action">HOST: START MATCH</button>
           <p id="roomHint" class="muted">Only the host starts the match. Managers control tactics but the AI plays cricket.</p>
@@ -334,7 +335,12 @@
             <div class="score-center"><b id="hudScore">0-0</b><span id="hudOvers">0.0 OVERS</span><small id="hudRate">RUN RATE 0.00</small></div>
             <div class="bowler-hud"><b id="hudBowler">N. RAY</b><span id="hudBowlingFigures">0-0 (0.0)</span><div id="lastBalls" class="last-balls"></div></div>
           </div>
-          <div class="match-actions"><button id="pauseBtn">PAUSE</button><button id="oneBallBtn">PLAY ONE BALL</button><select id="paceSelect"><option value="real">REAL-TIME (~1 HOUR)</option><option value="test">FAST TEST</option></select><div class="role-display">VIEW: <b id="activeRoleDisplay">HOST</b></div></div>
+          <div class="match-actions"><button id="pauseBtn">PAUSE</button><div id="autoMatchStatus" class="auto-match-status">AUTO PLAY • 5s BETWEEN DELIVERIES</div><div class="role-display">VIEW: <b id="activeRoleDisplay">HOST</b></div></div>
+          <div id="managerLiveAggression" class="manager-live-dock hidden">
+            <div><b>YOUR BATTING AGGRESSION</b><span id="liveAggressionLabel">BALANCED • 50</span></div>
+            <input id="liveAggressionSlider" type="range" min="0" max="100" step="1" value="50">
+            <div class="live-aggression-scale"><span>DEFENSIVE</span><span>BALANCED</span><span>ALL-OUT</span></div>
+          </div>
         </div>
         <aside class="commentary"><h3>COMMENTARY</h3><div id="commentaryFeed"></div></aside>
       </div>
@@ -381,7 +387,7 @@
         <h2>Simulation Settings</h2>
         <div class="slider-setting"><div><b>Thriller Bias</b><span>Raises the chance that evenly matched T20s stay alive into the closing overs without predetermining every result.</span></div><input id="thrillBias" type="range" min="0" max="100" value="90"><strong id="thrillLabel">90</strong></div>
         <div class="slider-setting"><div><b>Tie Bias</b><span>Small additional chance for very close games to finish level and go to a Super Over.</span></div><input id="tieBias" type="range" min="0" max="15" value="5"><strong id="tieLabel">5%</strong></div>
-        <div class="slider-setting"><div><b>Manager Timeout</b><span>If a manager does not choose in time, AI makes a legal decision so the match never freezes.</span></div><select id="defaultManagerTimeout"><option value="15">15 sec</option><option selected value="30">30 sec</option><option value="60">60 sec</option></select><strong></strong></div>
+        <div class="slider-setting"><div><b>Manager Timeout</b><span>Online matches use a fixed 60-second decision window. If a manager times out, AI makes a legal decision automatically.</span></div><select id="defaultManagerTimeout" disabled><option selected value="60">60 sec (fixed)</option></select><strong></strong></div>
         <div class="slider-setting"><div><b>Manager Control</b><span>Managers choose next batter and next bowler. AI still bats, bowls and fields.</span></div><select id="managerControl"><option value="on">On</option><option value="off">Off</option></select><strong></strong></div>
       </div>
     </section>
@@ -484,6 +490,6 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 <script src="config.js"></script>
-<script type="module" src="app.js?v=20260823-profile1"></script>
+<script type="module" src="app.js?v=20260823-autoresume1"></script>
 </body>
 </html>

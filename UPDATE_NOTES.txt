@@ -1,0 +1,27 @@
+CRICKET UNIVERSE V1.2 ALPHA
+
+Update:
+- Match progress saved after every completed delivery to Supabase and locally.
+- Active online host match can be restored after closing/reopening the browser.
+- Home shows RESUME LIVE MATCH when an unfinished match is recovered.
+- Manual PLAY ONE BALL removed.
+- REAL-TIME / FAST TEST speed selector removed.
+- Match runs automatically.
+- 5-second break between deliveries.
+- Online manager decision window fixed at 60 seconds.
+- If the bowling manager times out, AI selects a legal bowler and play continues.
+- Batting manager gets a private 0-100 Batting Aggression slider.
+- Defensive: more defence, dots, singles and twos.
+- Balanced: normal full scoring range.
+- All-Out: more boundary/six intent with increased wicket risk.
+- Batting aggression can be changed live and is applied before the next delivery.
+- Host and opposition cannot submit the batting manager's aggression action.
+- Manager can watch the live match without losing Manager role.
+- Existing Admin/Spectator security, dedicated Back button, logo Home navigation,
+  profile/account page, and cloud setup restrictions are preserved.
+
+Important:
+The match state survives browser closure, but with the current free static
+GitHub Pages architecture the simulation itself pauses when the Host browser
+is fully closed. Reopening the Admin account restores the latest completed
+delivery and provides RESUME LIVE MATCH.

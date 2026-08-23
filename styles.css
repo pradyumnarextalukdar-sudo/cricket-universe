@@ -56,3 +56,17 @@ html,body{margin:0;min-height:100%;background:#000;color:var(--text);font-family
   .profile-hero-avatar{width:58px;height:58px;font-size:24px;flex:0 0 auto}
   .detail-row{grid-template-columns:105px minmax(0,1fr)}
 }
+
+/* V1.2 automatic match flow, resume state, private manager aggression */
+.resume-live{border-color:#62e1f1!important;background:linear-gradient(135deg,#0e6c7a,#2338a5)!important}
+.resume-live b{color:#fff}
+.auto-match-status{display:flex;align-items:center;min-height:20px;padding:8px 12px;border:1px solid #314d53;background:#0b171b;color:#8eeaf4;font-size:10px;font-weight:1000;letter-spacing:.06em;flex:1}
+.manager-live-control{border:1px solid #303942;background:linear-gradient(135deg,#0d1216,#0b0d11);padding:14px}
+.live-control-badge{padding:6px 8px;background:#102b20;border:1px solid #2f7350;color:#9aedb9;font-size:9px;font-weight:1000;letter-spacing:.1em}
+.live-control-badge.bowling{background:#101d32;border-color:#315d96;color:#97c9ff}
+.aggression-readout{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding:10px 0;border-bottom:1px solid #2b3139}.aggression-readout span{color:#929aa4}.aggression-readout b{color:#fff}
+.aggression-slider,.manager-live-dock input[type="range"]{width:100%;margin:18px 0 8px;accent-color:#27cbe8}
+.aggression-scale,.live-aggression-scale{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:9px;font-weight:1000;color:#a4abb5}.aggression-scale span:nth-child(2),.live-aggression-scale span:nth-child(2){text-align:center}.aggression-scale span:last-child,.live-aggression-scale span:last-child{text-align:right}.aggression-scale small{font-size:8px;color:#737c87;font-weight:400}
+.manager-private-note{font-size:10px;line-height:1.5;color:#8c949f;background:#11151a;border-left:2px solid #21c7e3;padding:9px;margin:14px 0 0}.saved-flash{color:#8df0b0!important}
+.manager-live-dock{margin-top:6px;background:#0d1116;border:1px solid #34525a;padding:10px 12px;display:grid;grid-template-columns:190px minmax(180px,1fr);gap:8px 15px;align-items:center}.manager-live-dock>div:first-child b,.manager-live-dock>div:first-child span{display:block}.manager-live-dock>div:first-child b{font-size:10px}.manager-live-dock>div:first-child span{font-size:9px;color:#86e8f1;margin-top:3px}.manager-live-dock .live-aggression-scale{grid-column:2}
+@media(max-width:700px){.match-actions{flex-wrap:wrap}.auto-match-status{order:3;flex-basis:100%}.role-display{margin-left:0}.manager-live-dock{grid-template-columns:1fr}.manager-live-dock .live-aggression-scale{grid-column:1}.aggression-scale small{display:none}}
