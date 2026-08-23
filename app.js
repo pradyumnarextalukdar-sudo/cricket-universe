@@ -35,9 +35,9 @@ function cuEnsureThreeModules(){
 }
 
 const CU_HQ_CHARACTER_URL =
-  "https://cdn.jsdelivr.net/gh/kunalkushwaha/vsim@main/packages/assets/library/human.glb";
+  "https://cdn.jsdelivr.net/gh/kunalkushwaha/vsim@main/packages/assets/library/man.glb";
 const CU_FALLBACK_CHARACTER_URL =
-  "https://cdn.jsdelivr.net/gh/Seyamalam/blood-league-kickoff@main/public/assets/vendor/quaternius/night-striker.glb";
+  "https://cdn.jsdelivr.net/gh/kunalkushwaha/vsim@main/packages/assets/library/human.glb";
 
 let cuCharacterTemplatePromise=null;
 
@@ -974,7 +974,7 @@ async function cuLoadCharacterTemplate(){
   cuCharacterTemplatePromise=(async()=>{
     try{
       const gltf=await loader.loadAsync(CU_HQ_CHARACTER_URL);
-      return{gltf,source:"MakeHuman / MPFB CC0"};
+      return{gltf,source:"MakeHuman / MPFB CC0 — clean skinned player"};
     }catch(primaryError){
       console.warn("HQ human failed, using CC0 fallback",primaryError);
       const gltf=await loader.loadAsync(CU_FALLBACK_CHARACTER_URL);
@@ -1039,180 +1039,110 @@ function cuTeamPalette(teamId){
 }
 
 function cuStylePlayerMesh(model,palette,role){
+  const clothHints=[
+    "shirt","tshirt","t-shirt","top","cloth","clothes","clothing",
+    "jersey","pants","trouser","short","fabric","suit"
+  ];
+
   model.traverse(o=>{
     if(!o.isMesh)return;
+
     o.castShadow=true;
     o.receiveShadow=true;
-    if(o.material){
-      const m=o.material.clone();
+
+    const materials=Array.isArray(o.material)?o.material:[o.material];
+    const cloned=materials.map(original=>{
+      if(!original)return original;
+      const m=original.clone();
+
       if("roughness" in m)m.roughness=Math.max(.42,m.roughness??.55);
-      if("metalness" in m)m.metalness=Math.min(.12,m.metalness??0);
-      o.material=m;
-    }
+      if("metalness" in m)m.metalness=Math.min(.10,m.metalness??0);
+
+      // Tint ONLY a material that appears to be clothing.
+      // We deliberately do not put new geometry over the chest/arms/legs.
+      const label=(
+        String(original.name||"")+" "+
+        String(o.name||"")
+      ).toLowerCase();
+
+      if(clothHints.some(h=>label.includes(h)) && m.color){
+        const originalColor=m.color.clone();
+        const teamColor=new THREE.Color(palette.shirt);
+
+        // Preserve texture/material detail while nudging the garment
+        // toward the team colour.
+        originalColor.lerp(teamColor,.48);
+        m.color.copy(originalColor);
+      }
+
+      return m;
+    });
+
+    o.material=Array.isArray(o.material)?cloned:cloned[0];
   });
 }
 
+function cuMakeCricketBat(){
+  // Equipment only. This is NOT used as body/clothing geometry.
+  const bat=new THREE.Group();
+
+  const bladeShape=new THREE.Shape();
+  bladeShape.moveTo(-.065,-.35);
+  bladeShape.lineTo(.065,-.35);
+  bladeShape.lineTo(.073,.22);
+  bladeShape.lineTo(.050,.34);
+  bladeShape.lineTo(-.050,.34);
+  bladeShape.lineTo(-.073,.22);
+  bladeShape.closePath();
+
+  const bladeGeo=new THREE.ExtrudeGeometry(bladeShape,{
+    depth:.038,
+    bevelEnabled:true,
+    bevelThickness:.008,
+    bevelSize:.007,
+    bevelSegments:2
+  });
+  bladeGeo.center();
+
+  const blade=new THREE.Mesh(
+    bladeGeo,
+    new THREE.MeshPhysicalMaterial({
+      color:0xdab476,
+      roughness:.48,
+      clearcoat:.10,
+      clearcoatRoughness:.5
+    })
+  );
+  blade.position.y=-.29;
+  blade.castShadow=true;
+
+  const handle=new THREE.Mesh(
+    new THREE.CylinderGeometry(.020,.020,.32,12),
+    new THREE.MeshStandardMaterial({
+      color:0x252a2e,
+      roughness:.78
+    })
+  );
+  handle.position.y=.27;
+  handle.castShadow=true;
+
+  bat.add(blade,handle);
+  return bat;
+}
+
 function cuAttachCricketKit(player,palette,role){
-  const b=player.bones;
-  const jerseyMat=new THREE.MeshPhysicalMaterial({
-    color:palette.shirt,
-    roughness:.58,
-    sheen:.20,
-    sheenRoughness:.7,
-    clearcoat:.03
-  });
-  const trimMat=new THREE.MeshStandardMaterial({
-    color:palette.trim,
-    roughness:.5
-  });
-  const whiteMat=new THREE.MeshStandardMaterial({
-    color:0xf4f1e6,
-    roughness:.72
-  });
-  const darkMat=new THREE.MeshStandardMaterial({
-    color:0x1f2933,
-    roughness:.38,
-    metalness:.16
-  });
+  // V6 rule: NEVER construct a jersey, torso, sleeve, leg, pad shell,
+  // glove body, or helmet shell from primitive geometry.
+  //
+  // The player's body and fitted clothing come entirely from the skinned
+  // GLB. This prevents the balloon/capsule deformation seen in V5.
 
-  // Jersey shell on torso.
-  const torsoBone=b.spine2||b.spine1||b.pelvis;
-  if(torsoBone){
-    const jersey=new THREE.Mesh(
-      new THREE.CapsuleGeometry(.20,.36,8,14),
-      jerseyMat
-    );
-    jersey.scale.set(1.35,1.0,.80);
-    jersey.rotation.x=Math.PI/2;
-    jersey.position.set(0,.01,0);
-    jersey.castShadow=true;
-    torsoBone.add(jersey);
-
-    const stripe=new THREE.Mesh(
-      new THREE.BoxGeometry(.42,.055,.22),
-      trimMat
-    );
-    stripe.position.set(0,.20,-.03);
-    jersey.add(stripe);
-  }
-
-  // Team colour sleeves.
-  for(const arm of[b.upperL,b.upperR]){
-    if(!arm)continue;
-    const sleeve=new THREE.Mesh(
-      new THREE.CylinderGeometry(.10,.115,.28,14),
-      jerseyMat
-    );
-    sleeve.rotation.z=Math.PI/2;
-    sleeve.position.set(0,-.06,0);
-    arm.add(sleeve);
-  }
-
-  if(role==="batter"||role==="keeper"){
-    if(b.head){
-      const helmet=new THREE.Mesh(
-        new THREE.SphereGeometry(.145,24,18,0,Math.PI*2,0,Math.PI*.73),
-        new THREE.MeshPhysicalMaterial({
-          color:palette.shirt,
-          roughness:.3,
-          metalness:.18,
-          clearcoat:.25
-        })
-      );
-      helmet.position.set(0,.045,.005);
-      helmet.scale.set(1.05,.92,1.07);
-      helmet.castShadow=true;
-      b.head.add(helmet);
-
-      // Grill.
-      for(let i=-1;i<=1;i++){
-        const grill=new THREE.Mesh(
-          new THREE.CylinderGeometry(.006,.006,.25,8),
-          darkMat
-        );
-        grill.rotation.z=Math.PI/2;
-        grill.position.set(0,-.018,.145+i*.025);
-        helmet.add(grill);
-      }
-      const vertical=new THREE.Mesh(
-        new THREE.CylinderGeometry(.006,.006,.18,8),
-        darkMat
-      );
-      vertical.position.set(.085,-.05,.145);
-      helmet.add(vertical);
-    }
-
-    for(const calf of[b.calfL,b.calfR]){
-      if(!calf)continue;
-      const pad=new THREE.Mesh(
-        new THREE.BoxGeometry(.115,.38,.060),
-        whiteMat
-      );
-      pad.position.set(0,-.14,-.045);
-      pad.castShadow=true;
-      calf.add(pad);
-
-      for(let j=-1;j<=1;j++){
-        const ridge=new THREE.Mesh(
-          new THREE.BoxGeometry(.09,.025,.01),
-          trimMat
-        );
-        ridge.position.set(0,j*.09,-.037);
-        pad.add(ridge);
-      }
-    }
-  }
-
-  if(role==="batter"&&b.handR){
-    const bat=new THREE.Group();
-
-    const blade=new THREE.Mesh(
-      new THREE.BoxGeometry(.085,.70,.17),
-      new THREE.MeshPhysicalMaterial({
-        color:0xd7ad68,
-        roughness:.55,
-        clearcoat:.12
-      })
-    );
-    blade.position.y=-.33;
-    blade.castShadow=true;
-
-    const edge=new THREE.Mesh(
-      new THREE.BoxGeometry(.095,.68,.018),
-      new THREE.MeshStandardMaterial({
-        color:0x9f7740,
-        roughness:.6
-      })
-    );
-    edge.position.set(0,-.33,.092);
-
-    const handle=new THREE.Mesh(
-      new THREE.CylinderGeometry(.024,.024,.30,10),
-      new THREE.MeshStandardMaterial({
-        color:0x303a44,
-        roughness:.75
-      })
-    );
-    handle.position.y=.17;
-
-    bat.add(blade,edge,handle);
-    bat.position.set(.01,-.02,.01);
-    bat.rotation.set(.12,0,-.16);
-    b.handR.add(bat);
+  if(role==="batter" && player.bones.handR){
+    const bat=cuMakeCricketBat();
+    bat.position.set(.012,-.055,.005);
+    bat.rotation.set(.10,0,-.12);
+    player.bones.handR.add(bat);
     player.bat=bat;
-  }
-
-  if(role==="keeper"){
-    for(const hand of[b.handL,b.handR]){
-      if(!hand)continue;
-      const glove=new THREE.Mesh(
-        new THREE.SphereGeometry(.062,14,12),
-        whiteMat
-      );
-      glove.scale.set(1.30,.75,1.48);
-      glove.castShadow=true;
-      hand.add(glove);
-    }
   }
 }
 
@@ -1247,8 +1177,8 @@ async function cuCreatePlayer(role,teamId){
 
   const mixer=new THREE.AnimationMixer(model);
   const clips=asset.gltf.animations||[];
-  const walk=cuFindClip(clips,["walk","walking"]);
-  const idle=cuFindClip(clips,["idle","stand"]);
+  const walk=cuFindClip(clips,["walk","walking","run","jog"]);
+  const idle=cuFindClip(clips,["idle","stand","standing","breathing"]);
   const actions={};
 
   if(walk){
@@ -1899,7 +1829,7 @@ function initThree(){
       three.fielders=fielders;
       three.athletes=[batter,non,bowler,keeper,umpire,...fielders];
 
-      cuAssetStatus("HIGH-FIDELITY 3D • READY");
+      cuAssetStatus("CLEAN SKINNED PLAYERS • READY");
       setTimeout(()=>$("graphicsStatus")?.classList.add("faded"),2200);
 
     }catch(e){
@@ -2023,9 +1953,9 @@ async function animateDelivery(o){
     bowler.root.position.y=jump*.22;
 
     cuBoneRotate(bowler.bones.spine3,-.06+.26*p,.10*Math.sin(p*Math.PI),-.08);
-    cuBoneRotate(bowler.bones.upperR,-1.05+2.60*p,0,-.20);
-    cuBoneRotate(bowler.bones.lowerR,-.42+.70*Math.sin(p*Math.PI),0,0);
-    cuBoneRotate(bowler.bones.upperL,.42-.82*p,0,.18);
+    cuBoneRotate(bowler.bones.upperR,-.72+1.72*p,0,-.12);
+    cuBoneRotate(bowler.bones.lowerR,-.24+.42*Math.sin(p*Math.PI),0,0);
+    cuBoneRotate(bowler.bones.upperL,.25-.50*p,0,.10);
     cuBoneRotate(bowler.bones.thighL,-.40+.35*p,0,0);
     cuBoneRotate(bowler.bones.thighR,.25-.31*p,0,0);
     cuBoneRotate(bowler.bones.calfL,.18*Math.sin(p*Math.PI),0,0);
@@ -2056,10 +1986,10 @@ async function animateDelivery(o){
     const swing=Math.max(0,(p-.27)/.73);
 
     cuBoneRotate(batter.bones.spine3,-.05*swing,-.36*swing,-.10*swing);
-    cuBoneRotate(batter.bones.upperR,-.40-.92*swing,-.12,-.20);
-    cuBoneRotate(batter.bones.lowerR,-.28-.65*swing,0,0);
-    cuBoneRotate(batter.bones.upperL,-.34-1.10*swing,.08,.24);
-    cuBoneRotate(batter.bones.lowerL,-.22-.55*swing,0,0);
+    cuBoneRotate(batter.bones.upperR,-.25-.55*swing,-.08,-.10);
+    cuBoneRotate(batter.bones.lowerR,-.16-.38*swing,0,0);
+    cuBoneRotate(batter.bones.upperL,-.22-.62*swing,.05,.14);
+    cuBoneRotate(batter.bones.lowerL,-.14-.32*swing,0,0);
     cuBoneRotate(batter.bones.thighL,-.25*load,0,-.08);
     cuBoneRotate(batter.bones.calfL,.28*load,0,0);
 

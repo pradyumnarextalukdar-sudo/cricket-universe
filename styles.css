@@ -242,3 +242,9 @@ html,body{margin:0;min-height:100%;background:#000;color:var(--text);font-family
 @keyframes cuRefResultPop{0%{opacity:0;transform:translate(-50%,-50%) scale(.25) rotate(-9deg)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.15) rotate(4deg)}34%{transform:translate(-50%,-50%) scale(.96) rotate(-2deg)}72%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(0)}100%{opacity:0;transform:translate(-50%,-54%) scale(1.10)}}
 .reference-match-stage .graphics-status{top:auto;bottom:58px;left:auto;right:12px;font-size:7px;opacity:.5}.reference-match-stage .camera-badge{top:96px;right:12px;background:rgba(12,20,38,.60);border-radius:5px}.reference-match-stage .event-splash{display:none}
 @media(max-width:700px){.reference-match-stage,.reference-match-stage canvas{min-height:500px!important}.ref-scoreboard{top:7px;width:94%;min-height:63px}.ref-team{padding:5px 7px}.ref-team span{font-size:7px}.ref-team b{font-size:16px}.ref-score-mid strong{font-size:9px}.ref-score-mid small{font-size:7px}.ref-ball-dots{gap:3px}.ref-ball-dots i{width:14px;height:14px;font-size:6px;border-width:1px}.ref-bowler-card{bottom:58px;left:7px;transform:scale(.86);transform-origin:left bottom}.ref-bottom-controls{left:6px;right:6px;bottom:6px;grid-template-columns:40px 1fr auto;gap:6px}#refPauseBtn{width:40px;height:36px;font-size:16px}.ref-replay-pill{padding:7px 7px;font-size:7px}.ref-result-fx{font-size:120px}.ref-result-fx.wicket{font-size:82px}.legacy-score-hud{display:none}}
+
+
+/* V6 — clean skinned-player foundation */
+.reference-match-stage .graphics-status{
+  max-width:230px;
+}
