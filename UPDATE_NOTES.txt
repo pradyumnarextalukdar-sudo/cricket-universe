@@ -1,27 +1,32 @@
-CRICKET UNIVERSE — GRAPHICS ENGINE V2 FOUNDATION
+CRICKET UNIVERSE V3 — REAL RIGGED MODELS (PHASE 1)
 
-This build upgrades the live match presentation while preserving the existing Supabase online match engine and manager systems.
+This build discards the old capsule-player renderer for the live match.
 
-WHAT IS NEW
-- Original articulated low-poly human cricketers with separate shoulders, elbows, hips and knees.
-- Batting gear: helmet, grill, gloves, pads and attached cricket bat.
-- Bowling team uniforms use the actual team accent colour.
-- Wicketkeeper equipment and dedicated wicketkeeper reactions.
-- Umpire with original model and hat.
-- Stadium bowl, crowd, sight screens, advertising boards and floodlight towers.
-- Procedural grass texture with mowing stripes and a worn cricket pitch.
-- Broadcast scoreboard ribbon, field radar and camera/delivery labels.
-- Multiple automatic camera presets: bowler, batter, field and wicket.
-- Visible bowler run-up, gather, delivery stride and arm action.
-- Batter footwork, bat swing and follow-through.
-- Ball bounce, shot trajectory and lofted sixes.
-- Fielders chase the ball, bend to collect and return it.
-- Batters visibly run on 1/2/3 run outcomes.
-- Wicketkeeper reacts and bails move on wickets.
-- Outcome-specific camera changes for wickets and boundaries.
+Implemented:
+- Real skinned humanoid GLB characters.
+- Compatible skeletal animation library loaded with Three.js GLTFLoader.
+- Skeleton-safe cloning for multiple on-field players.
+- Real sprint/jog/idle animation states.
+- Original cricket bowling pose layered on the humanoid armature.
+- Original batting stroke pose layered on the humanoid armature.
+- Cricket bat, helmet, pads and wicketkeeper gloves attached to rig bones.
+- Bowler run-up.
+- Batter shot and follow-through.
+- Running between wickets.
+- Fielder chase animation.
+- Wicketkeeper movement.
+- Moving bails on wickets.
+- PBR grass using CC0 ambientCG maps.
+- Improved pitch, crease, boundary, stadium bowl, crowd and floodlights.
+- ACES tone mapping, soft shadows and improved lighting.
+- Broadcast bowler-end camera plus field/boundary/wicket camera changes.
+- Mobile fallback if remote rigged assets cannot load.
 
-IMPORTANT
-This is the V2 browser-native graphics FOUNDATION. It is substantially more detailed than the old capsule-player prototype, but it is still a stylised low-poly web game rather than photorealistic motion-captured console graphics. The next step after testing this build is a GLB/GLTF asset pipeline for externally sourced or custom rigged human models and animation clips.
+No Supabase SQL changes are required.
 
-INSTALL
-Replace app.js, index.html and styles.css in GitHub. No new Supabase SQL is required.
+Important:
+This is the first real-rigged-model graphics build. The CC0 animation library
+contains general humanoid locomotion rather than motion-captured cricket
+deliveries. Cricket-specific bowling/batting actions are therefore authored
+procedurally on the compatible rig in this phase. Dedicated high-end cricket
+motion clips are the next asset milestone.

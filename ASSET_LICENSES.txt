@@ -1,0 +1,34 @@
+CRICKET UNIVERSE — THIRD-PARTY ASSET LICENSES
+
+1) Universal Base Characters
+Creator: Quaternius
+Asset used: Superhero_Male_FullBody derivative named night-striker.glb
+License: Creative Commons Zero v1.0 Universal (CC0 1.0)
+Official source:
+https://quaternius.com/packs/universalbasecharacters.html
+https://quaternius.itch.io/universal-base-characters
+
+Runtime mirror used by this build:
+https://cdn.jsdelivr.net/gh/Seyamalam/blood-league-kickoff@main/public/assets/vendor/quaternius/night-striker.glb
+
+2) Universal Animation Library
+Creator: Quaternius
+License: Creative Commons Zero v1.0 Universal (CC0 1.0)
+Official source:
+https://quaternius.com/packs/universalanimationlibrary.html
+https://quaternius.itch.io/universal-animation-library
+
+Runtime mirror used by this build:
+https://cdn.jsdelivr.net/gh/Seyamalam/blood-league-kickoff@main/public/assets/vendor/quaternius/universal-animation-library.glb
+
+3) Grass 007
+Creator: ambientCG
+License: CC0 1.0
+Runtime texture mirror:
+https://cdn.jsdelivr.net/gh/Seyamalam/blood-league-kickoff@main/public/assets/vendor/ambientcg/grass007/
+
+Notes:
+- Cricket Universe does not copy proprietary cricket-game character models,
+  logos, stadiums, textures or animations.
+- Cricket-specific bowling and batting poses in this build are original
+  runtime bone animation layered on the CC0 humanoid rig.
