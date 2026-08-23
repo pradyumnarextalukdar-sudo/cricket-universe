@@ -394,7 +394,7 @@
           </div>
           <div id="signedInBox" class="hidden"><div class="cloud-ok">☁ <b id="signedEmail">Signed in</b><span>Your private account is connected.</span></div><div class="button-pair"><button id="syncNowBtn">SYNC NOW</button><button id="signOutBtn">SIGN OUT</button></div></div>
         </div>
-        <div class="panel">
+        <div id="adminCloudSetup" class="panel hidden">
           <h2>Administrator Cloud Setup</h2><p class="muted">One-time setup for the website owner.</p>
           <label>Supabase Project URL</label><input id="supabaseUrl" placeholder="https://xxxx.supabase.co">
           <label>Anon / Publishable Key</label><textarea id="supabaseKey" placeholder="Public anon or publishable key"></textarea>
@@ -429,6 +429,6 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 <script src="config.js"></script>
-<script type="module" src="app.js"></script>
+<script type="module" src="app.js?v=20260823-adminfix2"></script>
 </body>
 </html>
