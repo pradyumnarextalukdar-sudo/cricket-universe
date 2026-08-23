@@ -13,7 +13,7 @@ const nowISO=()=>new Date().toISOString();
 let state=loadState(), session=loadJSON(SESSION,null), serverRole=null, currentPage="home", activeFixtureId=null, match=null, three=null, paused=false, ballLock=false, cloudPoll=null, decisionTimerHandle=null;
 
 function loadJSON(k,d){try{return JSON.parse(localStorage.getItem(k)||"null")??d}catch{return d}}
-function baseState(){return{profile:{name:"Guest",points:0},settings:{thrill:90,tie:5,timeout:30,managerControl:true},players:[],teams:[],competitions:[],history:[],playerStats:{},localRole:"host",localRoom:null}}
+function baseState(){return{profile:{name:"Guest",fullName:"",managerName:"",region:"",points:0},settings:{thrill:90,tie:5,timeout:30,managerControl:true},players:[],teams:[],competitions:[],history:[],playerStats:{},localRole:"host",localRoom:null}}
 function loadState(){return Object.assign(baseState(),loadJSON(SAVE,{}))}
 function save(){localStorage.setItem(SAVE,JSON.stringify(state));renderAll();queueProfileSync()}
 function getCfg(){const s=loadJSON(CFG,{}),w=window.CRICKET_UNIVERSE_CONFIG||{};return{url:s.url||w.supabaseUrl||"",key:s.key||w.supabaseAnonKey||""}}
@@ -58,9 +58,15 @@ function generateDemo(){
 }
 if(!state.players.length||!state.teams.length)generateDemo();
 
-function nav(id){qsa(".page").forEach(p=>p.classList.remove("active"));$(id)?.classList.add("active");currentPage=id;if(id==="liveMatch")initThree();if(id==="scorecard")renderScorecard();if(id==="pointsTable")renderPoints();if(id==="statistics")renderStats();window.scrollTo({top:0,behavior:"smooth"})}
+let pageHistory=[];
+function updateBackButton(){const b=$("gameBackBtn");if(b)b.classList.toggle("hidden",currentPage==="home")}
+function nav(id,opt={}){if(!$(id))return;if(id===currentPage){updateBackButton();return}if(!opt.fromBack&&currentPage)pageHistory.push(currentPage);qsa(".page").forEach(p=>p.classList.remove("active"));$(id).classList.add("active");currentPage=id;if(id==="home")pageHistory=[];if(id==="liveMatch")initThree();if(id==="scorecard")renderScorecard();if(id==="pointsTable")renderPoints();if(id==="statistics")renderStats();if(id==="profile")renderProfilePage();updateBackButton();window.scrollTo({top:0,behavior:"smooth"})}
+function gameBack(){if(currentPage==="liveMatch"&&match&&!paused){paused=true;nav("pauseMenu",{fromBack:true});return}if(currentPage==="pauseMenu"&&match){paused=false;nav("liveMatch",{fromBack:true});return}let prev=pageHistory.pop();while(prev===currentPage)prev=pageHistory.pop();nav(prev||"home",{fromBack:true})}
+$("gameBackBtn")?.addEventListener("click",gameBack);
+$("brandHome")?.addEventListener("click",()=>nav("home"));
+$("userProfileButton")?.addEventListener("click",()=>nav("profile"));
 qsa("[data-nav]").forEach(b=>b.addEventListener("click",()=>nav(b.dataset.nav)));
-$("enterGame").addEventListener("click",()=>{$("boot").classList.remove("active");$("app").classList.remove("hidden")});
+$("enterGame").addEventListener("click",()=>{$("boot").classList.remove("active");$("app").classList.remove("hidden");updateBackButton()});
 
 function P(id){return state.players.find(p=>p.id===id)}
 function T(id){return state.teams.find(t=>t.id===id)}
@@ -294,7 +300,59 @@ function parseHash(){const m=location.hash.match(/#watch=([A-Z0-9-]+)/i);if(m){$
 async function startSpectatorPolling(){clearInterval(cloudPoll);cloudPoll=setInterval(async()=>{const r=state.localRoom;if(!r?.cloudId)return;try{const rows=await api("/rest/v1/matches?id=eq."+r.cloudId+"&select=*");if(rows.length)syncSpectatorState(rows[0]);const ev=await api(`/rest/v1/match_events?match_id=eq.${r.cloudId}&order=id.desc&limit=20&select=*`);$("commentaryFeed").innerHTML=[...ev].reverse().map(e=>`<div class="com ${e.event_type}">${esc(e.payload?.text||e.event_type)}</div>`).join("")}catch{}},2000)}
 function syncSpectatorState(m){const s=m.state||{};if(!match){const a=T(m.team_a_local_id),b=T(m.team_b_local_id);match={room:state.localRoom,a,b,battingTeam:T(s.battingTeam)||a,bowlingTeam:T(s.bowlingTeam)||b,score:s.score||0,wickets:s.wickets||0,balls:s.balls||0,target:s.target||null,striker:P(s.striker),non:P(s.non),currentBowler:P(s.bowler),lastBalls:s.lastBalls||[],batterRuns:{},batterBalls:{},bowlerRuns:{},bowlerBalls:{},logs:[],completed:s.completed}}else Object.assign(match,{score:s.score||0,wickets:s.wickets||0,balls:s.balls||0,target:s.target||null,battingTeam:T(s.battingTeam)||match.battingTeam,bowlingTeam:T(s.bowlingTeam)||match.bowlingTeam,striker:P(s.striker)||match.striker,non:P(s.non)||match.non,currentBowler:P(s.bowler)||match.currentBowler,lastBalls:s.lastBalls||[]});updateHUD();initThree()}
 
-function cloudUI(ok=false){const on=!!session&&cloudReady();$("cloudBadge").textContent=on?"CLOUD SYNC":"LOCAL MODE";$("cloudBadge").classList.toggle("amber",!on);$("signedOutBox").classList.toggle("hidden",!!session);$("signedInBox").classList.toggle("hidden",!session);const adminSetupPanel=$("adminCloudSetup");if(adminSetupPanel)adminSetupPanel.classList.toggle("hidden",!(session&&serverRole==="admin"));if(session){$("signedEmail").textContent=session.user?.email||"Signed in";$("userName").textContent=(session.user?.email||"User").split("@")[0];const roleLabel=serverRole==="admin"?"Administrator":state.localRole==="managerA"||state.localRole==="managerB"?"Team Manager":"Spectator";$("userState").textContent=roleLabel+" • Private cloud account";$("userAvatar").textContent=$("userName").textContent[0].toUpperCase()}else{$("userName").textContent=state.profile.name;$("userState").textContent="Preview profile";$("userAvatar").textContent=(state.profile.name[0]||"G").toUpperCase()}}
+
+function roleLabel(){
+  if(serverRole==="admin")return "Administrator";
+  if(state.localRole==="managerA"||state.localRole==="managerB")return "Team Manager";
+  return session?"Spectator":"Guest";
+}
+function profileDisplayName(){
+  const n=(state.profile?.name||"").trim();
+  if(n&&n!=="Guest")return n;
+  return session?.user?.email?.split("@")[0]||"Guest";
+}
+function renderProfilePage(){
+  if(!$("profileEmail"))return;
+  const p=state.profile||{};
+  const connected=!!session&&cloudReady();
+  const display=profileDisplayName();
+
+  $("profileEmail").textContent=session?.user?.email||"Not signed in";
+  $("profileRole").textContent=roleLabel();
+  $("profileCloudStatus").textContent=connected?"Connected & cloud-synced":"Local / not signed in";
+  $("profileUserId").textContent=session?.user?.id||"—";
+  $("profileConnectionBadge").textContent=connected?"CONNECTED":"LOCAL";
+  $("profileConnectionBadge").classList.toggle("connected",connected);
+  $("profileHeroAvatar").textContent=(display[0]||"G").toUpperCase();
+
+  $("profileFullName").value=p.fullName||"";
+  $("profileDisplayName").value=(p.name&&p.name!=="Guest")?p.name:"";
+  $("profileManagerName").value=p.managerName||"";
+  $("profileRegion").value=p.region||"";
+  $("profileSyncBtn").disabled=!connected;
+}
+$("savePersonalDetails")?.addEventListener("click",async()=>{
+  const display=$("profileDisplayName").value.trim();
+  state.profile=state.profile||{};
+  state.profile.fullName=$("profileFullName").value.trim();
+  state.profile.name=display||session?.user?.email?.split("@")[0]||"Guest";
+  state.profile.managerName=$("profileManagerName").value.trim();
+  state.profile.region=$("profileRegion").value.trim();
+  if(typeof state.profile.points!=="number")state.profile.points=0;
+  save();
+  if(session&&cloudReady()){
+    try{await pushProfile();alert("Personal details saved and synced.");}
+    catch(e){alert("Saved on this device. Cloud sync failed: "+e.message);}
+  }else alert("Personal details saved on this device.");
+  renderProfilePage();
+});
+$("profileSyncBtn")?.addEventListener("click",async()=>{
+  if(!session||!cloudReady())return alert("Sign in to sync your profile.");
+  try{await pushProfile();await pullProfile();await refreshServerRole();renderAll();alert("Profile synced.");}
+  catch(e){alert(e.message);}
+});
+
+function cloudUI(ok=false){const on=!!session&&cloudReady();$("cloudBadge").textContent=on?"CLOUD SYNC":"LOCAL MODE";$("cloudBadge").classList.toggle("amber",!on);$("signedOutBox").classList.toggle("hidden",!!session);$("signedInBox").classList.toggle("hidden",!session);const adminSetupPanel=$("adminCloudSetup");if(adminSetupPanel)adminSetupPanel.classList.toggle("hidden",!(session&&serverRole==="admin"));if(session){$("signedEmail").textContent=session.user?.email||"Signed in";$("userName").textContent=profileDisplayName();const roleText=roleLabel();$("userState").textContent=roleText+" • Private cloud account";$("userAvatar").textContent=($("userName").textContent[0]||"G").toUpperCase()}else{$("userName").textContent=profileDisplayName();$("userState").textContent="Preview profile";$("userAvatar").textContent=($("userName").textContent[0]||"G").toUpperCase()}renderProfilePage()}
 $("saveCloudConfig").addEventListener("click",()=>{localStorage.setItem(CFG,JSON.stringify({url:$("supabaseUrl").value.trim().replace(/\/$/,""),key:$("supabaseKey").value.trim()}));cloudUI();alert("Cloud configuration saved.")});
 $("signUpBtn").addEventListener("click",async()=>{try{const email=$("authEmail").value.trim(),password=$("authPass").value;if(password.length<6)throw new Error("Password must be at least 6 characters.");const r=await api("/auth/v1/signup",{method:"POST",body:JSON.stringify({email,password})});if(r.access_token){session={access_token:r.access_token,refresh_token:r.refresh_token,user:r.user};localStorage.setItem(SESSION,JSON.stringify(session));await refreshServerRole();await pushProfile();renderAll()}else alert("Account created. Confirm your email if confirmation is enabled.")}catch(e){alert(e.message)}});
 $("signInBtn").addEventListener("click",async()=>{try{const r=await api("/auth/v1/token?grant_type=password",{method:"POST",body:JSON.stringify({email:$("authEmail").value.trim(),password:$("authPass").value})});session={access_token:r.access_token,refresh_token:r.refresh_token,user:r.user};localStorage.setItem(SESSION,JSON.stringify(session));await pullProfile();await refreshServerRole();renderAll()}catch(e){alert(e.message)}});
@@ -308,5 +366,5 @@ function initThree(){if(three)return;const canvas=$("threeCanvas"),renderer=new 
 async function tween(obj,to,ms){const from=obj.position.clone(),s=performance.now();return new Promise(res=>{function f(n){const t=Math.min(1,(n-s)/ms);obj.position.lerpVectors(from,to,t);if(t<1)requestAnimationFrame(f);else res()}requestAnimationFrame(f)})}
 async function animateDelivery(o){initThree();const t=three,k=$("paceSelect").value==="real"?1:.35;t.bowler.position.set(0,0,15);t.ball.position.set(0,1.8,14);t.bat.rotation.z=-.15;await tween(t.bowler,new THREE.Vector3(0,0,8.7),1500*k);await tween(t.ball,new THREE.Vector3(0,.22,-4),650*k);await tween(t.ball,new THREE.Vector3(.1,1,-7),300*k);t.bat.rotation.z=1.5;await sleep(200*k);if(o.wicket)await tween(t.ball,new THREE.Vector3(0,.6,-8.4),420*k);else{const pts=o.runs>=4?[[35,4,-31],[-39,.2,-18],[31,.2,30]]:[[13,.2,-10],[-12,.2,-7],[18,.2,6]],p=pts[Math.floor(Math.random()*pts.length)],target=new THREE.Vector3(...p);const nearest=t.fielders.reduce((a,b)=>a.position.distanceTo(target)<b.position.distanceTo(target)?a:b);tween(nearest,new THREE.Vector3(target.x*.75,0,target.z*.75),900*k);await tween(t.ball,target,900*k)}}
 
-function renderAll(){renderPlayers();renderTeams();renderLineups();renderTournamentSelect();renderTournamentDashboard();renderMatchRoom();renderManagerHub();renderLiveList();renderPoints();renderStats();renderCareer();cloudUI();$("careerPoints").textContent=state.profile.points;$("thrillBias").value=state.settings.thrill;$("thrillLabel").textContent=state.settings.thrill;$("tieBias").value=state.settings.tie;$("tieLabel").textContent=state.settings.tie+"%";$("defaultManagerTimeout").value=state.settings.timeout;$("managerControl").value=state.settings.managerControl?"on":"off";const c=getCfg();$("supabaseUrl").value=c.url||"";$("supabaseKey").value=c.key||"";$("localRole").value=state.localRole}
+function renderAll(){renderPlayers();renderTeams();renderLineups();renderTournamentSelect();renderTournamentDashboard();renderMatchRoom();renderManagerHub();renderLiveList();renderPoints();renderStats();renderCareer();cloudUI();renderProfilePage();$("careerPoints").textContent=state.profile.points;$("thrillBias").value=state.settings.thrill;$("thrillLabel").textContent=state.settings.thrill;$("tieBias").value=state.settings.tie;$("tieLabel").textContent=state.settings.tie+"%";$("defaultManagerTimeout").value=state.settings.timeout;$("managerControl").value=state.settings.managerControl?"on":"off";const c=getCfg();$("supabaseUrl").value=c.url||"";$("supabaseKey").value=c.key||"";$("localRole").value=state.localRole}
 if(session&&cloudReady())state.localRole="spectator";renderAll();parseHash();if(session&&cloudReady()){pullProfile().then(refreshServerRole).then(renderAll).catch(()=>{});loadCloudLiveMatches();startRoomPolling()}

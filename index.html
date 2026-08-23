@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#05070a">
 <title>Cricket Universe — Manager Online Alpha</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=20260823-profile1">
 </head>
 <body>
 <div id="boot" class="boot active">
@@ -17,19 +17,23 @@
 
 <div id="app" class="app hidden">
   <header class="topbar">
-    <div class="brand">
+    <button id="brandHome" class="brand brand-button" type="button" aria-label="Go to Cricket Universe home">
       <div class="brand-title">CRICKET <span>UNIVERSE</span></div>
       <div class="brand-sub">AI CRICKET • MANAGER CONTROL • LIVE SPECTATORS</div>
-    </div>
+    </button>
     <div class="top-right">
       <div id="cloudBadge" class="badge amber">LOCAL MODE</div>
       <div class="points">★ <b id="careerPoints">0</b></div>
-      <div class="user">
+      <button id="userProfileButton" class="user user-button" type="button" aria-label="Open my account and personal details">
         <div class="user-avatar" id="userAvatar">G</div>
-        <div><b id="userName">Guest</b><span id="userState">Preview profile</span></div>
-      </div>
+        <div class="user-copy"><b id="userName">Guest</b><span id="userState">Preview profile</span></div>
+      </button>
     </div>
   </header>
+
+  <button id="gameBackBtn" class="game-back hidden" type="button" aria-label="Go back">
+    <span class="back-arrow" aria-hidden="true">←</span><span class="back-label">BACK</span>
+  </button>
 
   <main>
     <!-- HOME -->
@@ -382,6 +386,57 @@
       </div>
     </section>
 
+
+    <!-- MY ACCOUNT / PROFILE -->
+    <section id="profile" class="page accent-cyan">
+      <div class="screen-title profile-title">
+        <div>
+          <div class="eyebrow">MY ACCOUNT</div>
+          <h2>Account & Personal Details</h2>
+          <p class="muted">Your private Cricket Universe identity, role and game profile.</p>
+        </div>
+        <div class="profile-hero-avatar" id="profileHeroAvatar">G</div>
+      </div>
+
+      <div class="profile-grid">
+        <div class="panel profile-panel">
+          <div class="profile-section-heading">
+            <div><span class="profile-kicker">ACCOUNT DETAILS</span><h3>Private account</h3></div>
+            <span id="profileConnectionBadge" class="profile-status">LOCAL</span>
+          </div>
+
+          <div class="detail-row"><span>Email</span><b id="profileEmail">Not signed in</b></div>
+          <div class="detail-row"><span>Role</span><b id="profileRole">Guest</b></div>
+          <div class="detail-row"><span>Cloud status</span><b id="profileCloudStatus">Local only</b></div>
+          <div class="detail-row"><span>Account ID</span><code id="profileUserId">—</code></div>
+
+          <button class="white-action" data-nav="account">OPEN ONLINE ACCOUNT</button>
+          <button id="profileSyncBtn" class="secondary-action" type="button">SYNC PROFILE NOW</button>
+        </div>
+
+        <div class="panel profile-panel">
+          <div class="profile-section-heading">
+            <div><span class="profile-kicker">PERSONAL DETAILS</span><h3>Game profile</h3></div>
+          </div>
+
+          <label>Full name</label>
+          <input id="profileFullName" type="text" maxlength="80" placeholder="Your full name">
+
+          <label>Display name</label>
+          <input id="profileDisplayName" type="text" maxlength="32" placeholder="Name shown in Cricket Universe">
+
+          <label>Manager name</label>
+          <input id="profileManagerName" type="text" maxlength="32" placeholder="Public manager name">
+
+          <label>Country / Region</label>
+          <input id="profileRegion" type="text" maxlength="60" placeholder="Optional">
+
+          <button id="savePersonalDetails" class="primary-action" type="button">SAVE PERSONAL DETAILS</button>
+          <p class="profile-note">These details are stored with your Cricket Universe profile. Your password is never displayed here.</p>
+        </div>
+      </div>
+    </section>
+
     <!-- ACCOUNT -->
     <section id="account" class="page accent-cyan">
       <div class="account-grid">
@@ -429,6 +484,6 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 <script src="config.js"></script>
-<script type="module" src="app.js?v=20260823-adminfix2"></script>
+<script type="module" src="app.js?v=20260823-profile1"></script>
 </body>
 </html>
