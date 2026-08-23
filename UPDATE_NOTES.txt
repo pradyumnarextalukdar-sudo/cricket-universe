@@ -77,3 +77,16 @@ Keep the verified timing:
 
 UPLOAD
 Upload the COMPLETE V9 package, including assets/models.
+
+
+V9.1 STADIUM/CAMERA HOTFIX
+- Fixed broadcast camera being inside the imported grandstand.
+- Stadium is now scaled from the PLAYABLE GRASS diameter, not the full outer
+  building diameter.
+- Playing grass target diameter is 82 match units.
+- Stadium is centred from the grass surface.
+- Grass top is aligned to world Y=0 so player feet are not below the field.
+- The source stadium's small offset pitch patch is hidden.
+- Added a centred 17.7 x 3.15 match strip and crease markings.
+- No Supabase/SQL changes.
+- No model files changed.

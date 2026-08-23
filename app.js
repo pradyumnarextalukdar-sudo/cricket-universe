@@ -2310,11 +2310,29 @@ async function cuBuildStadium(scene){
   const gltf=await cuLoadStadiumAsset();
   const stadium=gltf.scene.clone(true);
 
+  let playingSurface=null;
+
   stadium.traverse(o=>{
     if(!o.isMesh)return;
 
     o.castShadow=true;
     o.receiveShadow=true;
+
+    const objectLabel=String(o.name||"").toLowerCase();
+
+    // The downloaded model contains a small, offset source-pitch mesh.
+    // Cricket Universe uses its own centered match pitch instead.
+    if(
+      objectLabel.includes("ground _pitch") ||
+      objectLabel.includes("ground _material.003")
+    ){
+      o.visible=false;
+    }
+
+    // Use the actual grass mesh to size and vertically align the stadium.
+    if(objectLabel.includes("ground texture")){
+      playingSurface=o;
+    }
 
     if(o.material){
       const materials=Array.isArray(o.material)?o.material:[o.material];
@@ -2340,32 +2358,90 @@ async function cuBuildStadium(scene){
     }
   });
 
-  // Normalize around the cricket square. The original stadium is about
-  // 96 units across, already close to the match coordinate system.
   stadium.updateMatrixWorld(true);
-  let box=new THREE.Box3().setFromObject(stadium);
-  const size=new THREE.Vector3();
-  const center=new THREE.Vector3();
-  box.getSize(size);
-  box.getCenter(center);
 
-  const horizontal=Math.max(size.x,size.z,.001);
-  const targetDiameter=96;
-  stadium.scale.multiplyScalar(targetDiameter/horizontal);
+  // V9 bug explanation:
+  // the source stadium's grass is ~38.5 units across while the inherited
+  // broadcast camera is ~24.6 units from centre. At source scale the camera
+  // therefore sits inside the grandstand. Scale the PLAYING SURFACE to an
+  // ~82-unit diameter instead of scaling by the stadium's outer structure.
+  let surfaceBox=playingSurface
+    ? new THREE.Box3().setFromObject(playingSurface)
+    : new THREE.Box3().setFromObject(stadium);
+
+  let surfaceSize=new THREE.Vector3();
+  surfaceBox.getSize(surfaceSize);
+
+  const surfaceHorizontal=Math.max(
+    surfaceSize.x,
+    surfaceSize.z,
+    .001
+  );
+
+  const desiredPlayingDiameter=82;
+  const fitScale=desiredPlayingDiameter/surfaceHorizontal;
+  stadium.scale.multiplyScalar(fitScale);
 
   stadium.updateMatrixWorld(true);
-  box=new THREE.Box3().setFromObject(stadium);
-  box.getCenter(center);
 
-  stadium.position.x-=center.x;
-  stadium.position.z-=center.z;
+  // Centre using the playable grass rather than the outer stadium.
+  surfaceBox=playingSurface
+    ? new THREE.Box3().setFromObject(playingSurface)
+    : new THREE.Box3().setFromObject(stadium);
+
+  const surfaceCenter=new THREE.Vector3();
+  surfaceBox.getCenter(surfaceCenter);
+
+  stadium.position.x-=surfaceCenter.x;
+  stadium.position.z-=surfaceCenter.z;
 
   stadium.updateMatrixWorld(true);
-  box=new THREE.Box3().setFromObject(stadium);
-  stadium.position.y-=box.min.y;
+
+  // Put the TOP of the grass at world Y=0. This keeps the cricketers'
+  // normalized feet at ground level instead of partly inside the stadium.
+  surfaceBox=playingSurface
+    ? new THREE.Box3().setFromObject(playingSurface)
+    : new THREE.Box3().setFromObject(stadium);
+
+  stadium.position.y-=surfaceBox.max.y;
+  stadium.updateMatrixWorld(true);
 
   cuAddCrowdLOD(stadium);
   scene.add(stadium);
+
+  // Add a correctly centred regulation-looking match strip. The source
+  // stadium's included pitch patch is offset, hence it is hidden above.
+  const pitch=new THREE.Mesh(
+    new THREE.PlaneGeometry(3.15,17.7,1,1),
+    new THREE.MeshStandardMaterial({
+      color:0xc8ad76,
+      roughness:.96,
+      metalness:0
+    })
+  );
+  pitch.rotation.x=-Math.PI/2;
+  pitch.position.set(0,.018,0);
+  pitch.receiveShadow=true;
+  pitch.name="CricketUniverseMatchPitch";
+  scene.add(pitch);
+
+  // Crease markings.
+  const lineMat=new THREE.MeshBasicMaterial({
+    color:0xf5f3e9
+  });
+
+  for(const z of[-7.72,7.72]){
+    const crease=new THREE.Mesh(
+      new THREE.PlaneGeometry(3.18,.055),
+      lineMat
+    );
+    crease.rotation.x=-Math.PI/2;
+    crease.position.set(0,.022,z);
+    scene.add(crease);
+  }
+
+  stadium.userData.matchPitch=pitch;
+  stadium.userData.fitScale=fitScale;
   return stadium;
 }
 
@@ -2430,7 +2506,7 @@ function initThree(){
   fill.position.set(25,16,-30);
   scene.add(fill);
 
-  cuAssetStatus("V8 • LOADING REAL STADIUM");
+  cuAssetStatus("V9.1 • FITTING STADIUM TO PLAYING FIELD");
 
   // Real uploaded stadium: grass, pitch, seating, boundary, scoreboard,
   // structures and floodlights all come from the GLB asset.
@@ -2537,7 +2613,7 @@ function initThree(){
       three.fielders=fielders;
       three.athletes=[batter,non,bowler,keeper,umpire,...fielders];
 
-      cuAssetStatus("V9 CRICKET MOTION • READY");
+      cuAssetStatus("V9.1 CRICKET MOTION • STADIUM FIXED");
       setTimeout(()=>$("graphicsStatus")?.classList.add("faded"),2200);
 
     }catch(e){
