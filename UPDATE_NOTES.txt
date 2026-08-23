@@ -1,13 +1,21 @@
-CRICKET UNIVERSE V1.3.3
+CRICKET UNIVERSE V1.3.4 — VISIBLE 3D ANIMATION FIX
 
 Fixes:
-- Cron engine checks every 1 second while match state enforces a 5-second delivery gap.
-- Removes the previous 5-10 second timing drift.
-- Browser polls live state/events every 1 second.
-- New server delivery events trigger 3D delivery animation.
-- SIX/FOUR/WICKET splash animation fires from server events.
-- Cricket SFX and commentary remain synchronized to server events.
-- Fielders reset to their base positions before each delivery animation.
+- New server delivery events explicitly trigger the 3D delivery sequence.
+- Fallback detects remote match-state progress if an event-feed update is missed.
+- First ball of a new match can animate instead of being swallowed as a polling baseline.
+- Bowler now has visible run-up, arm/leg movement and delivery action.
+- Batter has backswing and follow-through.
+- Fielders visibly run toward the ball.
+- Keeper reacts on wickets.
+- Ball trajectory is larger and more visible, with loft on sixes.
+- Stumps added to make wicket animation readable.
+- Animations are queued so two server deliveries cannot overlap visually.
+- Cache-busting forces mobile Chrome to load the new animation code.
 
-Upload app.js + index.html to GitHub.
-Then run server_timing_patch_v133.sql once in Supabase.
+Upload to GitHub:
+- app.js
+- index.html
+
+No Supabase SQL is required for this animation-only patch.
+The existing V1.3.3 1-second server tick / 5-second delivery timing remains in place.
