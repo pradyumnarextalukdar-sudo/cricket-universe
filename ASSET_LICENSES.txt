@@ -1,34 +1,39 @@
-CRICKET UNIVERSE — THIRD-PARTY ASSET LICENSES
+CRICKET UNIVERSE V8 — THIRD-PARTY ASSET CREDITS
 
-1) Universal Base Characters
-Creator: Quaternius
-Asset used: Superhero_Male_FullBody derivative named night-striker.glb
-License: Creative Commons Zero v1.0 Universal (CC0 1.0)
-Official source:
-https://quaternius.com/packs/universalbasecharacters.html
-https://quaternius.itch.io/universal-base-characters
+INDIAN CRICKET PLAYER RIGGED
+Creator: numaan.k99
+License embedded in supplied GLB: CC-BY-4.0
+Source:
+https://sketchfab.com/3d-models/indian-cricket-player-rigged-a1001b602e4f430bb9de68c24d9a4aa7
 
-Runtime mirror used by this build:
-https://cdn.jsdelivr.net/gh/Seyamalam/blood-league-kickoff@main/public/assets/vendor/quaternius/night-striker.glb
+CRICKET STADIUM
+Creator: Hassnain_ALy
+License embedded in supplied GLB: CC-BY-4.0
+Source:
+https://sketchfab.com/3d-models/cricket-stadium-b4b9964dacc9444e8a265a81fca22afb
 
-2) Universal Animation Library
-Creator: Quaternius
-License: Creative Commons Zero v1.0 Universal (CC0 1.0)
-Official source:
-https://quaternius.com/packs/universalanimationlibrary.html
-https://quaternius.itch.io/universal-animation-library
+CRICKET SET
+Creator: Bharath
+License embedded in supplied GLB: CC-BY-4.0
+Source:
+https://sketchfab.com/3d-models/cricket-set-03f793a975804e7680d0682e2cbf1c3c
 
-Runtime mirror used by this build:
-https://cdn.jsdelivr.net/gh/Seyamalam/blood-league-kickoff@main/public/assets/vendor/quaternius/universal-animation-library.glb
+MESH2MOTION ANIMATION LIBRARY
+Mesh2Motion project
+Art / rigs / animations: CC0 1.0
+https://github.com/Mesh2Motion/mesh2motion-app
 
-3) Grass 007
-Creator: ambientCG
-License: CC0 1.0
-Runtime texture mirror:
-https://cdn.jsdelivr.net/gh/Seyamalam/blood-league-kickoff@main/public/assets/vendor/ambientcg/grass007/
+CRICKET UNIVERSE CHANGES
+Cricket Universe performs its own team-colour material treatment, removes the
+source jersey branding at runtime, retargets animation clips, controls match
+cameras, positions the field, drives the ball trajectory and connects all
+visuals to the authoritative Supabase match state.
 
-Notes:
-- Cricket Universe does not copy proprietary cricket-game character models,
-  logos, stadiums, textures or animations.
-- Cricket-specific bowling and batting poses in this build are original
-  runtime bone animation layered on the CC0 humanoid rig.
+The CC-BY asset credits above must remain with distributed versions of the
+game.
+
+
+V9 ANIMATION NOTE
+The cricket-specific AnimationClip data in V9 is original Cricket Universe
+animation authoring applied to the uploaded 83-joint rig. Generic Mesh2Motion
+data is retained only for player locomotion (jog/run), under its CC0 license.

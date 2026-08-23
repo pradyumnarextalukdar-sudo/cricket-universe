@@ -1,16 +1,79 @@
-CRICKET UNIVERSE V3.0.1 — BUTTON / MODULE LOADER HOTFIX
+CRICKET UNIVERSE V9 — CRICKET-SPECIFIC ANIMATION SYSTEM
 
-Problem:
-- The V3 app module failed before startup.
-- GLTFLoader and SkeletonUtils internally import the bare module name "three".
-- Without an import map, Chrome rejected the module graph.
-- Because app.js never executed, all game buttons appeared unresponsive.
+BUILT ON THE USER-SUPPLIED V8 ASSETS
+- Real 83-joint rigged cricket player
+- Real cricket stadium
+- Real bat / ball / wicket set
 
-Fix:
-- Added an import map resolving "three" to the exact Three.js 0.178 module.
-- Cache-busted app.js so mobile Chrome fetches the corrected startup.
+GENERIC MOTIONS REMOVED FROM CRICKET ACTIONS
+- OverhandThrow is NOT used for bowling anymore.
+- Melee_Hook is NOT used for batting anymore.
+- External generic animation is retained only for Jog/Run locomotion.
 
-Install:
-- Replace index.html on GitHub.
-- app.js and styles.css are included for convenience but do not need replacing.
-- No Supabase SQL is required.
+NEW AUTHORED SKELETAL ANIMATION CLIPS
+The following are reusable THREE.AnimationClip sequences built directly for
+the uploaded cricket player's bone names and bind pose:
+
+BOWLING
+- pace bowling delivery
+- spin bowling delivery
+- wicket celebration
+- run-up uses retargeted jog, followed by cricket delivery clip
+
+BATTING
+- batting stance / breathing loop
+- front-foot defence
+- cover drive
+- straight drive
+- cut shot
+- pull shot
+- sweep shot
+- lofted drive
+- miss / beaten-batter motion
+
+WICKETKEEPING
+- permanent behind-the-stumps ready crouch
+- wicketkeeper catch / take
+- stumping action
+
+FIELDING
+- catch animation
+- pickup animation
+- overarm fielding throw
+- fielder chase uses run/jog
+
+UMPIRING
+- SIX: both arms raised overhead
+- FOUR: arm-wave signal
+- OUT/WICKET: raised-arm out signal
+
+BALL / CAMERA CHOREOGRAPHY
+- SIX follows a high parabolic trajectory beyond the rope into the crowd/stand
+  zone.
+- FOUR bounces and rolls to the rope.
+- Dot-ball miss can carry through to the wicketkeeper.
+- Caught wicket travels aerially to a fielder who completes a catch animation.
+- Bowled wicket hits the wicket set.
+- Stumped wicket shows batter advancing, keeper take and stump action.
+- 1/2/3 include field chase, pickup, throw and running between wickets.
+- Dedicated camera direction for keeper, catch, umpire, boundary and SIX.
+- Crowd LOD reacts to SIX and wicket events.
+
+WICKET VISUALS
+The current server authoritative state only says "wicket" and does not yet
+store a dismissal type. V9 therefore uses commentary wording when present;
+otherwise it selects a plausible visual dismissal:
+- spin bowlers may produce a stumping
+- other wickets are shown as caught or bowled
+
+This VISUAL choice does not change the authoritative score/result.
+
+TIMING / DATABASE
+NO SQL CHANGE.
+Keep the verified timing:
+- manager decision: 60 sec
+- post-decision: 5 sec
+- completed-delivery spacing: 12 sec
+
+UPLOAD
+Upload the COMPLETE V9 package, including assets/models.

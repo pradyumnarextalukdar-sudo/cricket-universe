@@ -36,10 +36,12 @@ function cuEnsureThreeModules(){
   return cuThreeModulesPromise;
 }
 
-const CU_VITRUVIAN_BODY_URL =
-  "https://cdn.jsdelivr.net/gh/ibrews/VitruvianGodot@main/godot_project/vitruvian_body.glb";
-const CU_VITRUVIAN_HEAD_URL =
-  "https://cdn.jsdelivr.net/gh/ibrews/VitruvianGodot@main/godot_project/vitruvian_head.glb";
+const CU_PLAYER_MODEL_URL =
+  new URL("./assets/models/cricket_player.glb", import.meta.url).href;
+const CU_STADIUM_MODEL_URL =
+  new URL("./assets/models/cricket_stadium.glb", import.meta.url).href;
+const CU_CRICKET_SET_URL =
+  new URL("./assets/models/cricket_set.glb", import.meta.url).href;
 
 const CU_M2M_BASE_ANIM_URL =
   "https://cdn.jsdelivr.net/gh/Mesh2Motion/mesh2motion-app@main/static/animations/human-base-animations.glb";
@@ -48,6 +50,8 @@ const CU_M2M_ADDON_ANIM_URL =
 
 let cuCharacterTemplatePromise=null;
 let cuRetargetedMotionPromise=null;
+let cuEquipmentAssetPromise=null;
+let cuStadiumAssetPromise=null;
 
 const $=id=>document.getElementById(id);
 const qs=(s,r=document)=>r.querySelector(s);
@@ -287,7 +291,8 @@ function visualFromEvent(e){
       await animateDelivery({
         runs:Number(payload.runs||0),
         wicket:!!payload.wicket,
-        type
+        type,
+        text:String(payload.text||"")
       });
       if(type==="six")splash("SIX!");
       else if(type==="four")splash("FOUR!");
@@ -980,21 +985,20 @@ async function cuLoadCharacterTemplate(){
   const loader=new GLTFLoader();
 
   cuCharacterTemplatePromise=(async()=>{
-    const [body,head,baseAnim,addonAnim]=await Promise.all([
-      loader.loadAsync(CU_VITRUVIAN_BODY_URL),
-      loader.loadAsync(CU_VITRUVIAN_HEAD_URL),
+    const [player,baseAnim,addonAnim]=await Promise.all([
+      loader.loadAsync(CU_PLAYER_MODEL_URL),
       loader.loadAsync(CU_M2M_BASE_ANIM_URL),
       loader.loadAsync(CU_M2M_ADDON_ANIM_URL)
     ]);
 
     return{
-      body,
-      head,
+      body:player,
+      head:null,
       animationPacks:[
         {scene:baseAnim.scene,clips:baseAnim.animations||[],label:"Mesh2Motion base"},
         {scene:addonAnim.scene,clips:addonAnim.animations||[],label:"Mesh2Motion addon"}
       ],
-      source:"Vitruvian CC0 body/head + CC0 Mesh2Motion retargeted motion"
+      source:"CC-BY rigged cricket player + CC0 retargeted skeletal motion"
     };
   })().catch(err=>{
     cuCharacterTemplatePromise=null;
@@ -1002,6 +1006,32 @@ async function cuLoadCharacterTemplate(){
   });
 
   return cuCharacterTemplatePromise;
+}
+
+async function cuLoadEquipmentAsset(){
+  if(cuEquipmentAssetPromise)return cuEquipmentAssetPromise;
+  await cuEnsureThreeModules();
+  const loader=new GLTFLoader();
+
+  cuEquipmentAssetPromise=loader.loadAsync(CU_CRICKET_SET_URL).catch(err=>{
+    cuEquipmentAssetPromise=null;
+    throw err;
+  });
+
+  return cuEquipmentAssetPromise;
+}
+
+async function cuLoadStadiumAsset(){
+  if(cuStadiumAssetPromise)return cuStadiumAssetPromise;
+  await cuEnsureThreeModules();
+  const loader=new GLTFLoader();
+
+  cuStadiumAssetPromise=loader.loadAsync(CU_STADIUM_MODEL_URL).catch(err=>{
+    cuStadiumAssetPromise=null;
+    throw err;
+  });
+
+  return cuStadiumAssetPromise;
 }
 
 function cuBoneByAliases(root,aliases){
@@ -1019,77 +1049,66 @@ function cuBoneByAliases(root,aliases){
 function cuBuildBoneMap(model){
   return{
     pelvis:cuBoneByAliases(model,[
-      "pelvis","hips","hip","mixamorig:hips","root","root.x"
+      "Hips_01","hips","pelvis","mixamorig:hips","root"
     ]),
     spine1:cuBoneByAliases(model,[
-      "spine","spine_01","spine01","spine1","mixamorig:spine","torso"
+      "Spine_02","spine","spine_01","mixamorig:spine"
     ]),
     spine2:cuBoneByAliases(model,[
-      "spine_02","spine02","spine2","mixamorig:spine1","chest"
+      "Spine1_03","spine1","spine_02","mixamorig:spine1","chest"
     ]),
     spine3:cuBoneByAliases(model,[
-      "spine_03","spine03","spine3","mixamorig:spine2","upperchest"
+      "Spine2_04","spine2","spine_03","mixamorig:spine2","upperchest"
     ]),
     neck:cuBoneByAliases(model,[
-      "neck_01","neck01","neck","mixamorig:neck"
+      "Neck_05","neck","mixamorig:neck"
     ]),
     head:cuBoneByAliases(model,[
-      "head","mixamorig:head"
+      "Head_06","head","mixamorig:head"
     ]),
 
     clavL:cuBoneByAliases(model,[
-      "clavicle_l","clavicle.l","shoulder01.l","shoulder_l",
-      "leftshoulder","mixamorig:leftshoulder"
+      "LeftShoulder_010","leftshoulder","clavicle_l","mixamorig:leftshoulder"
     ]),
     clavR:cuBoneByAliases(model,[
-      "clavicle_r","clavicle.r","shoulder01.r","shoulder_r",
-      "rightshoulder","mixamorig:rightshoulder"
+      "RightShoulder_033","rightshoulder","clavicle_r","mixamorig:rightshoulder"
     ]),
-
     upperL:cuBoneByAliases(model,[
-      "upperarm_l","upperarm.l","upper_arm.l","upperarm01.l",
-      "upperarm01_l","leftarm","mixamorig:leftarm"
+      "LeftArm_011","leftarm","upperarm_l","mixamorig:leftarm"
     ]),
     upperR:cuBoneByAliases(model,[
-      "upperarm_r","upperarm.r","upper_arm.r","upperarm01.r",
-      "upperarm01_r","rightarm","mixamorig:rightarm"
+      "RightArm_034","rightarm","upperarm_r","mixamorig:rightarm"
     ]),
     lowerL:cuBoneByAliases(model,[
-      "lowerarm_l","lowerarm.l","forearm.l","lower_arm.l",
-      "lowerarm01.l","lowerarm01_l","leftforearm","mixamorig:leftforearm"
+      "LeftForeArm_012","leftforearm","lowerarm_l","mixamorig:leftforearm"
     ]),
     lowerR:cuBoneByAliases(model,[
-      "lowerarm_r","lowerarm.r","forearm.r","lower_arm.r",
-      "lowerarm01.r","lowerarm01_r","rightforearm","mixamorig:rightforearm"
+      "RightForeArm_035","rightforearm","lowerarm_r","mixamorig:rightforearm"
     ]),
     handL:cuBoneByAliases(model,[
-      "hand_l","hand.l","wrist.l","wrist_l","lefthand","mixamorig:lefthand"
+      "LeftHand_013","lefthand","hand_l","mixamorig:lefthand"
     ]),
     handR:cuBoneByAliases(model,[
-      "hand_r","hand.r","wrist.r","wrist_r","righthand","mixamorig:righthand"
+      "RightHand_036","righthand","hand_r","mixamorig:righthand"
     ]),
 
     thighL:cuBoneByAliases(model,[
-      "thigh_l","thigh.l","upperleg_l","upperleg.l","upperleg01.l",
-      "leftupleg","mixamorig:leftupleg"
+      "LeftUpLeg_057","leftupleg","thigh_l","mixamorig:leftupleg"
     ]),
     thighR:cuBoneByAliases(model,[
-      "thigh_r","thigh.r","upperleg_r","upperleg.r","upperleg01.r",
-      "rightupleg","mixamorig:rightupleg"
+      "RightUpLeg_062","rightupleg","thigh_r","mixamorig:rightupleg"
     ]),
     calfL:cuBoneByAliases(model,[
-      "calf_l","calf.l","lowerleg_l","lowerleg.l","lowerleg01.l",
-      "leftleg","mixamorig:leftleg"
+      "LeftLeg_058","leftleg","calf_l","mixamorig:leftleg"
     ]),
     calfR:cuBoneByAliases(model,[
-      "calf_r","calf.r","lowerleg_r","lowerleg.r","lowerleg01.r",
-      "rightleg","mixamorig:rightleg"
+      "RightLeg_063","rightleg","calf_r","mixamorig:rightleg"
     ]),
     footL:cuBoneByAliases(model,[
-      "foot_l","foot.l","leftfoot","mixamorig:leftfoot"
+      "LeftFoot_059","leftfoot","foot_l","mixamorig:leftfoot"
     ]),
     footR:cuBoneByAliases(model,[
-      "foot_r","foot.r","rightfoot","mixamorig:rightfoot"
+      "RightFoot_064","rightfoot","foot_r","mixamorig:rightfoot"
     ])
   };
 }
@@ -1108,40 +1127,50 @@ function cuTeamPalette(teamId){
 }
 
 function cuStylePlayerMesh(model,palette,role){
-  const clothHints=[
-    "shirt","tshirt","t-shirt","top","cloth","clothes","clothing",
-    "jersey","pants","trouser","short","fabric","suit"
-  ];
-
   model.traverse(o=>{
     if(!o.isMesh)return;
 
     o.castShadow=true;
     o.receiveShadow=true;
 
+    const name=String(o.name||"").toLowerCase();
+
+    // The supplied model includes a glasses mesh. It is not part of the
+    // Cricket Universe player look.
+    if(name.includes("glasses")){
+      o.visible=false;
+      return;
+    }
+
     const materials=Array.isArray(o.material)?o.material:[o.material];
     const cloned=materials.map(original=>{
       if(!original)return original;
       const m=original.clone();
-
-      if("roughness" in m)m.roughness=Math.max(.42,m.roughness??.55);
-      if("metalness" in m)m.metalness=Math.min(.10,m.metalness??0);
-
-      // Tint ONLY a material that appears to be clothing.
-      // We deliberately do not put new geometry over the chest/arms/legs.
       const label=(
-        String(original.name||"")+" "+
-        String(o.name||"")
+        String(original.name||"")+" "+String(o.name||"")
       ).toLowerCase();
 
-      if(clothHints.some(h=>label.includes(h)) && m.color){
-        const originalColor=m.color.clone();
-        const teamColor=new THREE.Color(palette.shirt);
+      if("roughness" in m)m.roughness=Math.max(.38,m.roughness??.55);
+      if("metalness" in m)m.metalness=Math.min(.08,m.metalness??0);
 
-        // Preserve texture/material detail while nudging the garment
-        // toward the team colour.
-        originalColor.lerp(teamColor,.48);
-        m.color.copy(originalColor);
+      // Replace source-team shirt/bottom artwork with clean Cricket Universe
+      // colours while retaining the real skinned garment geometry.
+      if(label.includes("outfit_top")){
+        if(m.map)m.map=null;
+        if(m.color)m.color.setHex(
+          role==="umpire"?0x78c9e6:palette.shirt
+        );
+        if("roughness" in m)m.roughness=.56;
+      }else if(label.includes("outfit_bottom")){
+        if(m.map)m.map=null;
+        if(m.color)m.color.setHex(
+          role==="umpire"?0x1b2733:palette.pants
+        );
+        if("roughness" in m)m.roughness=.60;
+      }else if(label.includes("outfit_footwear")){
+        if(m.map)m.map=null;
+        if(m.color)m.color.setHex(0xf0f2f4);
+        if("roughness" in m)m.roughness=.50;
       }
 
       return m;
@@ -1151,68 +1180,133 @@ function cuStylePlayerMesh(model,palette,role){
   });
 }
 
-function cuMakeCricketBat(){
-  // Equipment only. This is NOT used as body/clothing geometry.
-  const bat=new THREE.Group();
+function cuCloneWorldNode(sourceScene,nodeName){
+  sourceScene.updateMatrixWorld(true);
+  const source=sourceScene.getObjectByName(nodeName);
+  if(!source)return null;
 
-  const bladeShape=new THREE.Shape();
-  bladeShape.moveTo(-.065,-.35);
-  bladeShape.lineTo(.065,-.35);
-  bladeShape.lineTo(.073,.22);
-  bladeShape.lineTo(.050,.34);
-  bladeShape.lineTo(-.050,.34);
-  bladeShape.lineTo(-.073,.22);
-  bladeShape.closePath();
+  const clone=source.clone(true);
+  source.matrixWorld.decompose(
+    clone.position,
+    clone.quaternion,
+    clone.scale
+  );
 
-  const bladeGeo=new THREE.ExtrudeGeometry(bladeShape,{
-    depth:.038,
-    bevelEnabled:true,
-    bevelThickness:.008,
-    bevelSize:.007,
-    bevelSegments:2
+  clone.traverse(o=>{
+    if(o.isMesh){
+      o.castShadow=true;
+      o.receiveShadow=true;
+      if(o.material){
+        if(Array.isArray(o.material)){
+          o.material=o.material.map(m=>m?.clone?.()||m);
+        }else{
+          o.material=o.material.clone?.()||o.material;
+        }
+      }
+    }
   });
-  bladeGeo.center();
 
-  const blade=new THREE.Mesh(
-    bladeGeo,
-    new THREE.MeshPhysicalMaterial({
-      color:0xdab476,
-      roughness:.48,
-      clearcoat:.10,
-      clearcoatRoughness:.5
-    })
+  return clone;
+}
+
+function cuNormalizeAssetPart(object,targetMax){
+  const wrapper=new THREE.Group();
+  wrapper.add(object);
+  wrapper.updateMatrixWorld(true);
+
+  let box=new THREE.Box3().setFromObject(wrapper);
+  const center=new THREE.Vector3();
+  const size=new THREE.Vector3();
+  box.getCenter(center);
+  box.getSize(size);
+
+  object.position.sub(center);
+
+  const maxDim=Math.max(size.x,size.y,size.z,.0001);
+  wrapper.scale.setScalar(targetMax/maxDim);
+  wrapper.updateMatrixWorld(true);
+  return wrapper;
+}
+
+function cuLongestAxis(object){
+  object.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(object);
+  const size=new THREE.Vector3();
+  box.getSize(size);
+  if(size.x>=size.y&&size.x>=size.z)return"x";
+  if(size.y>=size.x&&size.y>=size.z)return"y";
+  return"z";
+}
+
+async function cuCreateRealBat(){
+  const asset=await cuLoadEquipmentAsset();
+  const worldNode=cuCloneWorldNode(
+    asset.scene,
+    "StaticMeshActor_4_StaticMeshComponent0_1"
   );
-  blade.position.y=-.29;
-  blade.castShadow=true;
+  if(!worldNode)return null;
 
-  const handle=new THREE.Mesh(
-    new THREE.CylinderGeometry(.020,.020,.32,12),
-    new THREE.MeshStandardMaterial({
-      color:0x252a2e,
-      roughness:.78
-    })
-  );
-  handle.position.y=.27;
-  handle.castShadow=true;
+  const bat=cuNormalizeAssetPart(worldNode,.92);
+  const axis=cuLongestAxis(bat);
 
-  bat.add(blade,handle);
+  // Source bat's long direction is Z. Align to local Y for attachment.
+  if(axis==="z")bat.rotation.x=-Math.PI/2;
+  else if(axis==="x")bat.rotation.z=Math.PI/2;
+
+  bat.updateMatrixWorld(true);
   return bat;
 }
 
-function cuAttachCricketKit(player,palette,role){
-  // V6 rule: NEVER construct a jersey, torso, sleeve, leg, pad shell,
-  // glove body, or helmet shell from primitive geometry.
-  //
-  // The player's body and fitted clothing come entirely from the skinned
-  // GLB. This prevents the balloon/capsule deformation seen in V5.
+async function cuCreateRealBall(){
+  const asset=await cuLoadEquipmentAsset();
+  const worldNode=cuCloneWorldNode(
+    asset.scene,
+    "StaticMeshActor_3_StaticMeshComponent0_0"
+  );
+  if(!worldNode)return null;
 
-  if(role==="batter" && player.bones.handR){
-    const bat=cuMakeCricketBat();
-    bat.position.set(.012,-.055,.005);
-    bat.rotation.set(.10,0,-.12);
-    player.bones.handR.add(bat);
-    player.bat=bat;
-  }
+  const ball=cuNormalizeAssetPart(worldNode,.145);
+  ball.traverse(o=>{
+    if(o.isMesh){
+      o.castShadow=true;
+      if(o.material){
+        const mats=Array.isArray(o.material)?o.material:[o.material];
+        mats.forEach(m=>{
+          if(!m)return;
+          if("roughness" in m)m.roughness=.32;
+          if("metalness" in m)m.metalness=.02;
+        });
+      }
+    }
+  });
+
+  return ball;
+}
+
+async function cuCreateRealWicket(){
+  const asset=await cuLoadEquipmentAsset();
+  const worldNode=cuCloneWorldNode(
+    asset.scene,
+    "StaticMeshActor_5_StaticMeshComponent0_2"
+  );
+  if(!worldNode)return null;
+
+  const wicket=cuNormalizeAssetPart(worldNode,.85);
+  return wicket;
+}
+
+async function cuAttachCricketKit(player,palette,role){
+  if(role!=="batter"||!player.bones.handR)return;
+
+  const bat=await cuCreateRealBat();
+  if(!bat)return;
+
+  // Place the handle area near the right hand. The real bat mesh remains
+  // a single rigid equipment object; the player's body/clothes stay skinned.
+  bat.position.set(.015,-.26,.015);
+  bat.rotation.z-=.12;
+  player.bones.handR.add(bat);
+  player.bat=bat;
 }
 
 function cuFindClip(clips,names){
@@ -1249,22 +1343,17 @@ async function cuBuildRetargetedMotionSet(asset){
   cuRetargetedMotionPromise=(async()=>{
     const target=cloneSkeleton(asset.body.scene);
     const targetBones=cuBuildBoneMap(target);
-
-    const definitions={
-      jog:["Jog","Run","Running"],
-      bowl:["OverhandThrow","Overhand Throw","Throw"],
-      batAttack:["Melee_Hook","Melee Hook","Punch_Cross","Punch Cross"],
-      batDefend:["Defend","Fighting Idle"],
-      keeper:["Crouch_Idle","Crouch Idle"],
-      celebrate:["Power Up","Greeting"]
-    };
-
     const result={};
 
-    for(const [key,names] of Object.entries(definitions)){
-      const found=cuFindClipWithSource(asset,names);
-      if(!found)continue;
+    // V9 only uses an external generic animation for locomotion.
+    // All actual cricket actions are authored specifically for the uploaded
+    // 83-joint cricket-player skeleton below.
+    const found=cuFindClipWithSource(
+      asset,
+      ["Jog","Run","Running","Sprint"]
+    );
 
+    if(found){
       try{
         const nameMap=cuRetargetNameMap(target,found.source);
         const clip=retargetClip(
@@ -1280,26 +1369,12 @@ async function cuBuildRetargetedMotionSet(asset){
             fps:30
           }
         );
-        clip.name="cu_"+key;
-        result[key]=clip;
+        clip.name="cu_jog";
+        result.jog=clip;
       }catch(err){
-        console.warn("Could not retarget",key,err);
+        console.warn("Could not retarget locomotion",err);
       }
     }
-
-    // Vitruvian ships its own natural locomotion/idle clips.
-    const bodyClips=asset.body.animations||[];
-    result.idle=
-      cuFindClip(bodyClips,["Idle","HappyIdle","Sway"])||
-      result.batDefend||
-      null;
-    result.walk=
-      cuFindClip(bodyClips,["Walk"])||
-      result.jog||
-      null;
-
-    // If retargeted jog is unavailable, use Vitruvian Walk.
-    if(!result.jog)result.jog=result.walk;
 
     return result;
   })();
@@ -1336,26 +1411,628 @@ function cuCloneHeadPreservingAlignment(root,bodyModel,headTemplate,bones){
   return head;
 }
 
+
+const CU_DEG=Math.PI/180;
+
+function cuPoseQuat(baseQuat,deg){
+  const e=deg||[0,0,0];
+  const offset=new THREE.Quaternion().setFromEuler(
+    new THREE.Euler(
+      (e[0]||0)*CU_DEG,
+      (e[1]||0)*CU_DEG,
+      (e[2]||0)*CU_DEG,
+      "XYZ"
+    )
+  );
+  return baseQuat.clone().multiply(offset).normalize();
+}
+
+function cuBuildPoseClip(player,name,duration,frames){
+  const tracks=[];
+  const boneKeys=new Set();
+
+  for(const frame of frames){
+    for(const key of Object.keys(frame.pose||{}))boneKeys.add(key);
+    for(const key of Object.keys(frame.pos||{}))boneKeys.add(key);
+  }
+
+  for(const key of boneKeys){
+    const bone=player.bones?.[key];
+    if(!bone)continue;
+
+    const qTimes=[];
+    const qValues=[];
+    const pTimes=[];
+    const pValues=[];
+
+    const baseQ=bone.quaternion.clone();
+    const baseP=bone.position.clone();
+
+    let hasQuat=false;
+    let hasPos=false;
+
+    for(const frame of frames){
+      const t=Math.max(0,Math.min(duration,frame.t));
+
+      if(frame.pose && Object.prototype.hasOwnProperty.call(frame.pose,key)){
+        const q=cuPoseQuat(baseQ,frame.pose[key]);
+        qTimes.push(t);
+        qValues.push(q.x,q.y,q.z,q.w);
+        hasQuat=true;
+      }else if(hasQuat){
+        qTimes.push(t);
+        qValues.push(baseQ.x,baseQ.y,baseQ.z,baseQ.w);
+      }
+
+      if(frame.pos && Object.prototype.hasOwnProperty.call(frame.pos,key)){
+        const v=frame.pos[key];
+        pTimes.push(t);
+        pValues.push(
+          baseP.x+(v[0]||0),
+          baseP.y+(v[1]||0),
+          baseP.z+(v[2]||0)
+        );
+        hasPos=true;
+      }else if(hasPos){
+        pTimes.push(t);
+        pValues.push(baseP.x,baseP.y,baseP.z);
+      }
+    }
+
+    if(hasQuat && qTimes.length>=2){
+      tracks.push(
+        new THREE.QuaternionKeyframeTrack(
+          `${bone.name}.quaternion`,
+          qTimes,
+          qValues,
+          THREE.InterpolateLinear
+        )
+      );
+    }
+
+    if(hasPos && pTimes.length>=2){
+      tracks.push(
+        new THREE.VectorKeyframeTrack(
+          `${bone.name}.position`,
+          pTimes,
+          pValues,
+          THREE.InterpolateSmooth
+        )
+      );
+    }
+  }
+
+  return new THREE.AnimationClip(name,duration,tracks);
+}
+
+function cuBuildCricketClipLibrary(player){
+  // The offsets below are deliberately moderate and are applied relative to
+  // the player's authored bind pose. This keeps skin deformation stable while
+  // creating recognizable cricket actions.
+  const clips={};
+
+  clips.idle=cuBuildPoseClip(player,"cu_cricket_idle",1.8,[
+    {t:0,pose:{
+      spine3:[0,0,0],head:[0,0,0],
+      upperL:[0,0,0],upperR:[0,0,0]
+    }},
+    {t:.9,pose:{
+      spine3:[1,0,0],head:[-1,1,0],
+      upperL:[1,0,0],upperR:[1,0,0]
+    }},
+    {t:1.8,pose:{
+      spine3:[0,0,0],head:[0,0,0],
+      upperL:[0,0,0],upperR:[0,0,0]
+    }}
+  ]);
+
+  clips.batStance=cuBuildPoseClip(player,"cu_batting_stance",1.6,[
+    {t:0,pose:{
+      spine3:[5,-7,0],head:[-2,5,0],
+      clavL:[0,0,-5],clavR:[0,0,5],
+      upperL:[-22,-6,28],lowerL:[-30,0,-8],
+      upperR:[-28,7,-24],lowerR:[-38,0,8],
+      thighL:[-7,0,-3],thighR:[-7,0,3],
+      calfL:[10,0,0],calfR:[10,0,0]
+    },pos:{pelvis:[0,-.025,0]}},
+    {t:.8,pose:{
+      spine3:[6,-6,0],head:[-1,4,0],
+      clavL:[0,0,-5],clavR:[0,0,5],
+      upperL:[-23,-6,29],lowerL:[-31,0,-8],
+      upperR:[-29,7,-25],lowerR:[-39,0,8],
+      thighL:[-8,0,-3],thighR:[-8,0,3],
+      calfL:[11,0,0],calfR:[11,0,0]
+    },pos:{pelvis:[0,-.03,0]}},
+    {t:1.6,pose:{
+      spine3:[5,-7,0],head:[-2,5,0],
+      clavL:[0,0,-5],clavR:[0,0,5],
+      upperL:[-22,-6,28],lowerL:[-30,0,-8],
+      upperR:[-28,7,-24],lowerR:[-38,0,8],
+      thighL:[-7,0,-3],thighR:[-7,0,3],
+      calfL:[10,0,0],calfR:[10,0,0]
+    },pos:{pelvis:[0,-.025,0]}}
+  ]);
+
+  clips.bowlDelivery=cuBuildPoseClip(player,"cu_fast_bowling_delivery",1.22,[
+    {t:0,pose:{
+      spine1:[2,0,0],spine3:[4,-8,0],
+      upperL:[-18,0,24],lowerL:[-18,0,-8],
+      upperR:[-25,0,-22],lowerR:[-28,0,10],
+      thighL:[-8,0,0],thighR:[9,0,0]
+    }},
+    {t:.22,pose:{
+      spine1:[-3,-5,0],spine3:[-6,-18,-4],
+      upperL:[-36,-8,38],lowerL:[-32,0,-15],
+      upperR:[-74,15,-35],lowerR:[-60,0,18],
+      thighL:[-22,0,-5],thighR:[19,0,4],
+      calfL:[23,0,0],calfR:[-5,0,0]
+    },pos:{pelvis:[0,.035,0]}},
+    {t:.48,pose:{
+      spine1:[-7,-10,0],spine3:[-13,-25,-6],
+      upperL:[-48,-12,42],lowerL:[-38,0,-20],
+      upperR:[-105,24,-22],lowerR:[-35,0,12],
+      thighL:[-29,0,-6],thighR:[24,0,5],
+      calfL:[30,0,0]
+    },pos:{pelvis:[0,.065,0]}},
+    {t:.70,pose:{
+      spine1:[4,8,0],spine3:[17,24,6],
+      upperL:[-22,8,18],lowerL:[-18,0,-7],
+      upperR:[45,-14,-12],lowerR:[-12,0,4],
+      thighL:[6,0,-2],thighR:[-18,0,2],
+      calfR:[22,0,0]
+    },pos:{pelvis:[0,.025,-.018]}},
+    {t:.95,pose:{
+      spine1:[10,14,0],spine3:[24,31,8],
+      upperL:[6,12,-10],lowerL:[-8,0,4],
+      upperR:[78,-20,20],lowerR:[22,0,-10],
+      thighL:[18,0,3],thighR:[-25,0,-3],
+      calfR:[28,0,0]
+    },pos:{pelvis:[0,-.01,-.035]}},
+    {t:1.22,pose:{
+      spine1:[4,8,0],spine3:[10,17,4],
+      upperL:[8,5,-8],lowerL:[0,0,0],
+      upperR:[35,-10,14],lowerR:[12,0,-4],
+      thighL:[10,0,1],thighR:[-12,0,-1]
+    },pos:{pelvis:[0,0,-.02]}}
+  ]);
+
+  clips.spinDelivery=cuBuildPoseClip(player,"cu_spin_bowling_delivery",1.16,[
+    {t:0,pose:{
+      spine3:[4,-8,0],
+      upperL:[-20,-5,20],lowerL:[-24,0,-6],
+      upperR:[-28,8,-24],lowerR:[-34,0,9]
+    }},
+    {t:.28,pose:{
+      spine3:[-8,-28,-5],
+      upperL:[-42,-8,32],lowerL:[-34,0,-12],
+      upperR:[-82,22,-20],lowerR:[-54,0,15],
+      thighL:[-12,0,-4],thighR:[12,0,4]
+    }},
+    {t:.58,pose:{
+      spine3:[9,20,7],
+      upperL:[-12,8,10],lowerL:[-16,0,-4],
+      upperR:[30,-18,-6],lowerR:[-6,0,4],
+      thighL:[7,0,-2],thighR:[-8,0,2]
+    }},
+    {t:.82,pose:{
+      spine3:[19,33,9],
+      upperL:[4,10,-5],lowerL:[-4,0,0],
+      upperR:[67,-25,16],lowerR:[24,0,-10]
+    }},
+    {t:1.16,pose:{
+      spine3:[6,12,3],
+      upperL:[3,0,-3],lowerL:[0,0,0],
+      upperR:[24,-8,8],lowerR:[8,0,-3]
+    }}
+  ]);
+
+  clips.shotDefence=cuBuildPoseClip(player,"cu_front_foot_defence",.74,[
+    {t:0,pose:{
+      spine3:[5,-7,0],
+      upperL:[-22,-6,28],lowerL:[-30,0,-8],
+      upperR:[-28,7,-24],lowerR:[-38,0,8],
+      thighL:[-7,0,-3],calfL:[10,0,0]
+    }},
+    {t:.34,pose:{
+      spine3:[12,-12,-3],
+      upperL:[-42,-6,35],lowerL:[-48,0,-12],
+      upperR:[-50,8,-32],lowerR:[-52,0,12],
+      thighL:[-25,0,-5],calfL:[31,0,0],
+      thighR:[5,0,2]
+    },pos:{pelvis:[0,-.035,-.025]}},
+    {t:.74,pose:{
+      spine3:[9,-9,-2],
+      upperL:[-34,-5,31],lowerL:[-39,0,-10],
+      upperR:[-42,7,-29],lowerR:[-45,0,10],
+      thighL:[-18,0,-4],calfL:[24,0,0]
+    },pos:{pelvis:[0,-.02,-.018]}}
+  ]);
+
+  clips.shotCover=cuBuildPoseClip(player,"cu_cover_drive",.92,[
+    {t:0,pose:{
+      spine3:[5,-9,0],
+      upperL:[-28,-7,35],lowerL:[-38,0,-10],
+      upperR:[-34,8,-30],lowerR:[-44,0,10]
+    }},
+    {t:.25,pose:{
+      spine3:[9,-22,-3],
+      upperL:[-46,-12,48],lowerL:[-58,0,-16],
+      upperR:[-54,15,-42],lowerR:[-62,0,16],
+      thighL:[-20,0,-5],calfL:[27,0,0]
+    }},
+    {t:.52,pose:{
+      spine3:[14,24,5],
+      upperL:[8,18,-18],lowerL:[10,0,4],
+      upperR:[2,-20,20],lowerR:[8,0,-5],
+      thighL:[-12,0,-3],calfL:[18,0,0]
+    },pos:{pelvis:[0,-.02,-.025]}},
+    {t:.92,pose:{
+      spine3:[9,35,7],
+      upperL:[28,23,-28],lowerL:[20,0,6],
+      upperR:[22,-25,30],lowerR:[18,0,-7]
+    }}
+  ]);
+
+  clips.shotStraight=cuBuildPoseClip(player,"cu_straight_drive",.90,[
+    {t:0,pose:{
+      spine3:[4,-5,0],
+      upperL:[-26,-5,32],lowerL:[-36,0,-10],
+      upperR:[-32,6,-28],lowerR:[-42,0,10]
+    }},
+    {t:.24,pose:{
+      spine3:[8,-12,-2],
+      upperL:[-45,-7,42],lowerL:[-54,0,-14],
+      upperR:[-50,8,-37],lowerR:[-58,0,14],
+      thighL:[-18,0,-4],calfL:[25,0,0]
+    }},
+    {t:.53,pose:{
+      spine3:[12,7,0],
+      upperL:[0,2,-5],lowerL:[2,0,0],
+      upperR:[-4,-2,6],lowerR:[0,0,0]
+    },pos:{pelvis:[0,-.025,-.035]}},
+    {t:.90,pose:{
+      spine3:[11,16,2],
+      upperL:[22,10,-20],lowerL:[14,0,4],
+      upperR:[17,-11,22],lowerR:[12,0,-5]
+    }}
+  ]);
+
+  clips.shotCut=cuBuildPoseClip(player,"cu_cut_shot",.78,[
+    {t:0,pose:{
+      spine3:[4,-7,0],
+      upperL:[-22,-5,27],lowerL:[-31,0,-8],
+      upperR:[-29,7,-24],lowerR:[-38,0,8]
+    }},
+    {t:.24,pose:{
+      spine3:[4,-30,-4],
+      upperL:[-28,-18,42],lowerL:[-42,0,-12],
+      upperR:[-36,22,-38],lowerR:[-50,0,13]
+    }},
+    {t:.48,pose:{
+      spine3:[3,35,5],
+      upperL:[10,32,-26],lowerL:[14,0,5],
+      upperR:[6,-35,30],lowerR:[12,0,-6]
+    }},
+    {t:.78,pose:{
+      spine3:[2,45,7],
+      upperL:[20,35,-28],lowerL:[17,0,5],
+      upperR:[15,-40,34],lowerR:[15,0,-6]
+    }}
+  ]);
+
+  clips.shotPull=cuBuildPoseClip(player,"cu_pull_shot",.84,[
+    {t:0,pose:{
+      spine3:[2,-12,0],
+      upperL:[-34,-8,38],lowerL:[-48,0,-12],
+      upperR:[-40,10,-34],lowerR:[-52,0,12]
+    }},
+    {t:.25,pose:{
+      spine3:[-2,-34,-5],
+      upperL:[-20,-32,48],lowerL:[-38,0,-15],
+      upperR:[-25,36,-45],lowerR:[-42,0,16],
+      thighR:[-8,0,4]
+    }},
+    {t:.52,pose:{
+      spine3:[0,48,5],
+      upperL:[18,44,-30],lowerL:[20,0,8],
+      upperR:[16,-48,35],lowerR:[18,0,-8]
+    }},
+    {t:.84,pose:{
+      spine3:[3,60,8],
+      upperL:[26,48,-35],lowerL:[22,0,8],
+      upperR:[24,-54,40],lowerR:[21,0,-9]
+    }}
+  ]);
+
+  clips.shotSweep=cuBuildPoseClip(player,"cu_sweep_shot",.94,[
+    {t:0,pose:{
+      spine3:[5,-10,0],
+      upperL:[-25,-8,32],lowerL:[-38,0,-10],
+      upperR:[-32,10,-28],lowerR:[-44,0,10],
+      thighL:[-8,0,-3],thighR:[-8,0,3]
+    }},
+    {t:.30,pose:{
+      spine3:[24,-24,-6],
+      upperL:[-44,-18,44],lowerL:[-58,0,-16],
+      upperR:[-50,20,-38],lowerR:[-62,0,16],
+      thighL:[-45,0,-7],calfL:[55,0,0],
+      thighR:[-22,0,5],calfR:[38,0,0]
+    },pos:{pelvis:[0,-.12,-.03]}},
+    {t:.58,pose:{
+      spine3:[28,42,7],
+      upperL:[12,38,-28],lowerL:[18,0,8],
+      upperR:[8,-40,32],lowerR:[16,0,-8],
+      thighL:[-45,0,-7],calfL:[55,0,0],
+      thighR:[-22,0,5],calfR:[38,0,0]
+    },pos:{pelvis:[0,-.12,-.03]}},
+    {t:.94,pose:{
+      spine3:[18,50,8],
+      upperL:[25,40,-32],lowerL:[20,0,8],
+      upperR:[20,-45,36],lowerR:[18,0,-8],
+      thighL:[-25,0,-4],calfL:[34,0,0],
+      thighR:[-15,0,3],calfR:[25,0,0]
+    },pos:{pelvis:[0,-.07,-.02]}}
+  ]);
+
+  clips.shotLoft=cuBuildPoseClip(player,"cu_lofted_drive",1.00,[
+    {t:0,pose:{
+      spine3:[4,-13,0],
+      upperL:[-36,-10,42],lowerL:[-48,0,-13],
+      upperR:[-42,12,-37],lowerR:[-54,0,13]
+    }},
+    {t:.28,pose:{
+      spine3:[10,-22,-3],
+      upperL:[-54,-16,52],lowerL:[-62,0,-17],
+      upperR:[-60,18,-48],lowerR:[-68,0,17],
+      thighL:[-18,0,-4],calfL:[24,0,0]
+    }},
+    {t:.55,pose:{
+      spine3:[-4,25,5],
+      upperL:[28,24,-28],lowerL:[18,0,7],
+      upperR:[24,-27,34],lowerR:[17,0,-7],
+      thighL:[-8,0,-2],calfL:[12,0,0]
+    }},
+    {t:1.0,pose:{
+      spine3:[-12,42,8],
+      upperL:[58,30,-38],lowerL:[32,0,10],
+      upperR:[54,-34,44],lowerR:[30,0,-10],
+      head:[-8,-18,0]
+    }}
+  ]);
+
+  clips.shotMiss=cuBuildPoseClip(player,"cu_batter_miss",.68,[
+    {t:0,pose:{
+      spine3:[5,-8,0],
+      upperL:[-24,-6,30],lowerL:[-34,0,-9],
+      upperR:[-30,8,-27],lowerR:[-40,0,9]
+    }},
+    {t:.34,pose:{
+      spine3:[10,18,4],
+      upperL:[2,20,-13],lowerL:[4,0,3],
+      upperR:[-2,-22,16],lowerR:[3,0,-3]
+    }},
+    {t:.68,pose:{
+      spine3:[9,29,6],
+      upperL:[16,25,-20],lowerL:[11,0,4],
+      upperR:[12,-28,23],lowerR:[10,0,-4]
+    }}
+  ]);
+
+  clips.keeperReady=cuBuildPoseClip(player,"cu_keeper_ready",1.45,[
+    {t:0,pose:{
+      spine1:[12,0,0],spine3:[14,0,0],
+      upperL:[-20,0,18],lowerL:[-25,0,-5],
+      upperR:[-20,0,-18],lowerR:[-25,0,5],
+      thighL:[-28,0,-5],thighR:[-28,0,5],
+      calfL:[50,0,0],calfR:[50,0,0]
+    },pos:{pelvis:[0,-.14,0]}},
+    {t:.72,pose:{
+      spine1:[13,0,0],spine3:[15,0,0],
+      upperL:[-21,0,19],lowerL:[-26,0,-5],
+      upperR:[-21,0,-19],lowerR:[-26,0,5],
+      thighL:[-29,0,-5],thighR:[-29,0,5],
+      calfL:[51,0,0],calfR:[51,0,0]
+    },pos:{pelvis:[0,-.145,0]}},
+    {t:1.45,pose:{
+      spine1:[12,0,0],spine3:[14,0,0],
+      upperL:[-20,0,18],lowerL:[-25,0,-5],
+      upperR:[-20,0,-18],lowerR:[-25,0,5],
+      thighL:[-28,0,-5],thighR:[-28,0,5],
+      calfL:[50,0,0],calfR:[50,0,0]
+    },pos:{pelvis:[0,-.14,0]}}
+  ]);
+
+  clips.keeperCatch=cuBuildPoseClip(player,"cu_keeper_catch",.62,[
+    {t:0,pose:{
+      spine1:[12,0,0],spine3:[14,0,0],
+      upperL:[-20,0,18],lowerL:[-25,0,-5],
+      upperR:[-20,0,-18],lowerR:[-25,0,5],
+      thighL:[-28,0,-5],thighR:[-28,0,5],
+      calfL:[50,0,0],calfR:[50,0,0]
+    },pos:{pelvis:[0,-.14,0]}},
+    {t:.30,pose:{
+      spine1:[7,0,0],spine3:[5,0,0],
+      upperL:[-58,0,24],lowerL:[-42,0,-8],
+      upperR:[-58,0,-24],lowerR:[-42,0,8],
+      thighL:[-18,0,-4],thighR:[-18,0,4],
+      calfL:[32,0,0],calfR:[32,0,0]
+    },pos:{pelvis:[0,-.08,.015]}},
+    {t:.62,pose:{
+      spine1:[4,0,0],spine3:[2,0,0],
+      upperL:[-45,0,18],lowerL:[-35,0,-7],
+      upperR:[-45,0,-18],lowerR:[-35,0,7],
+      thighL:[-12,0,-3],thighR:[-12,0,3],
+      calfL:[24,0,0],calfR:[24,0,0]
+    },pos:{pelvis:[0,-.045,.02]}}
+  ]);
+
+  clips.keeperStump=cuBuildPoseClip(player,"cu_keeper_stumping",.72,[
+    {t:0,pose:{
+      spine1:[12,0,0],spine3:[14,0,0],
+      upperL:[-22,0,18],lowerL:[-26,0,-6],
+      upperR:[-22,0,-18],lowerR:[-26,0,6],
+      thighL:[-28,0,-5],thighR:[-28,0,5],
+      calfL:[50,0,0],calfR:[50,0,0]
+    },pos:{pelvis:[0,-.14,0]}},
+    {t:.34,pose:{
+      spine1:[17,18,-4],spine3:[22,26,-6],
+      upperL:[-48,24,20],lowerL:[-40,0,-8],
+      upperR:[-48,-22,-20],lowerR:[-40,0,8],
+      thighL:[-36,0,-7],thighR:[-22,0,5],
+      calfL:[58,0,0],calfR:[40,0,0]
+    },pos:{pelvis:[.05,-.15,.04]}},
+    {t:.72,pose:{
+      spine1:[12,25,-4],spine3:[16,32,-7],
+      upperL:[-36,30,14],lowerL:[-32,0,-5],
+      upperR:[-36,-28,-14],lowerR:[-32,0,5],
+      thighL:[-28,0,-5],thighR:[-20,0,4],
+      calfL:[48,0,0],calfR:[36,0,0]
+    },pos:{pelvis:[.07,-.12,.06]}}
+  ]);
+
+  clips.fieldCatch=cuBuildPoseClip(player,"cu_fielder_catch",.70,[
+    {t:0,pose:{
+      spine3:[5,0,0],
+      upperL:[-8,0,10],lowerL:[-12,0,-4],
+      upperR:[-8,0,-10],lowerR:[-12,0,4]
+    }},
+    {t:.32,pose:{
+      spine3:[-5,0,0],head:[-8,0,0],
+      upperL:[-72,0,32],lowerL:[-58,0,-10],
+      upperR:[-72,0,-32],lowerR:[-58,0,10],
+      thighL:[-12,0,-3],thighR:[-12,0,3],
+      calfL:[18,0,0],calfR:[18,0,0]
+    },pos:{pelvis:[0,-.04,0]}},
+    {t:.70,pose:{
+      spine3:[7,0,0],
+      upperL:[-48,0,22],lowerL:[-44,0,-8],
+      upperR:[-48,0,-22],lowerR:[-44,0,8],
+      thighL:[-8,0,-2],thighR:[-8,0,2]
+    },pos:{pelvis:[0,-.02,0]}}
+  ]);
+
+  clips.fieldPickup=cuBuildPoseClip(player,"cu_fielder_pickup",.62,[
+    {t:0,pose:{
+      spine1:[4,0,0],spine3:[5,0,0]
+    }},
+    {t:.34,pose:{
+      spine1:[32,0,0],spine3:[38,0,0],
+      upperR:[-46,0,-14],lowerR:[-34,0,7],
+      upperL:[-24,0,12],lowerL:[-25,0,-5],
+      thighL:[-24,0,-4],thighR:[-15,0,3],
+      calfL:[38,0,0],calfR:[26,0,0]
+    },pos:{pelvis:[0,-.11,.02]}},
+    {t:.62,pose:{
+      spine1:[14,0,0],spine3:[17,0,0],
+      upperR:[-28,0,-10],lowerR:[-25,0,5],
+      upperL:[-14,0,8],lowerL:[-18,0,-4]
+    },pos:{pelvis:[0,-.045,.01]}}
+  ]);
+
+  clips.fieldThrow=cuBuildPoseClip(player,"cu_fielder_throw",.74,[
+    {t:0,pose:{
+      spine3:[3,-10,0],
+      upperR:[-70,18,-20],lowerR:[-65,0,16],
+      upperL:[-20,-6,18],lowerL:[-24,0,-6]
+    }},
+    {t:.34,pose:{
+      spine3:[-7,-28,-5],
+      upperR:[-102,28,-18],lowerR:[-45,0,12],
+      upperL:[-35,-10,28],lowerL:[-30,0,-9]
+    }},
+    {t:.54,pose:{
+      spine3:[12,24,6],
+      upperR:[52,-18,14],lowerR:[2,0,0],
+      upperL:[-4,8,-7],lowerL:[-8,0,3]
+    }},
+    {t:.74,pose:{
+      spine3:[13,34,7],
+      upperR:[70,-22,20],lowerR:[18,0,-6],
+      upperL:[6,12,-12],lowerL:[2,0,0]
+    }}
+  ]);
+
+  clips.umpSix=cuBuildPoseClip(player,"cu_umpire_six",1.18,[
+    {t:0,pose:{
+      upperL:[0,0,0],lowerL:[0,0,0],
+      upperR:[0,0,0],lowerR:[0,0,0]
+    }},
+    {t:.34,pose:{
+      upperL:[-95,0,28],lowerL:[-18,0,-6],
+      upperR:[-95,0,-28],lowerR:[-18,0,6],
+      spine3:[-3,0,0]
+    }},
+    {t:1.18,pose:{
+      upperL:[-105,0,30],lowerL:[-8,0,-4],
+      upperR:[-105,0,-30],lowerR:[-8,0,4],
+      head:[-6,0,0]
+    }}
+  ]);
+
+  clips.umpFour=cuBuildPoseClip(player,"cu_umpire_four",1.30,[
+    {t:0,pose:{
+      upperR:[0,0,0],lowerR:[0,0,0],spine3:[0,0,0]
+    }},
+    {t:.22,pose:{
+      upperR:[-16,-12,-78],lowerR:[-8,0,-10],spine3:[0,-8,0]
+    }},
+    {t:.47,pose:{
+      upperR:[-12,15,82],lowerR:[-7,0,9],spine3:[0,8,0]
+    }},
+    {t:.72,pose:{
+      upperR:[-16,-14,-80],lowerR:[-8,0,-10],spine3:[0,-8,0]
+    }},
+    {t:.98,pose:{
+      upperR:[-12,15,80],lowerR:[-7,0,9],spine3:[0,8,0]
+    }},
+    {t:1.30,pose:{
+      upperR:[-8,0,-35],lowerR:[-4,0,-5],spine3:[0,0,0]
+    }}
+  ]);
+
+  clips.umpOut=cuBuildPoseClip(player,"cu_umpire_out",1.08,[
+    {t:0,pose:{
+      upperR:[0,0,0],lowerR:[0,0,0],head:[0,0,0]
+    }},
+    {t:.36,pose:{
+      upperR:[-68,0,-22],lowerR:[-82,0,10],head:[-4,0,0]
+    }},
+    {t:1.08,pose:{
+      upperR:[-78,0,-18],lowerR:[-94,0,8],head:[-5,0,0]
+    }}
+  ]);
+
+  clips.wicketCelebrate=cuBuildPoseClip(player,"cu_wicket_celebration",1.0,[
+    {t:0,pose:{
+      upperL:[0,0,0],upperR:[0,0,0],spine3:[0,0,0]
+    }},
+    {t:.42,pose:{
+      upperL:[-78,0,34],lowerL:[-30,0,-8],
+      upperR:[-78,0,-34],lowerR:[-30,0,8],
+      spine3:[-8,0,0],head:[-8,0,0]
+    }},
+    {t:1.0,pose:{
+      upperL:[-92,0,38],lowerL:[-18,0,-6],
+      upperR:[-92,0,-38],lowerR:[-18,0,6],
+      spine3:[-10,0,0]
+    }}
+  ]);
+
+  return clips;
+}
+
 async function cuCreatePlayer(role,teamId){
   const asset=await cuLoadCharacterTemplate();
   const motion=await cuBuildRetargetedMotionSet(asset);
 
   const root=new THREE.Group();
-  const bodyModel=cloneSkeleton(asset.body.scene);
-  root.add(bodyModel);
+  const model=cloneSkeleton(asset.body.scene);
+  root.add(model);
 
-  const bones=cuBuildBoneMap(bodyModel);
-  const headModel=cuCloneHeadPreservingAlignment(
-    root,
-    bodyModel,
-    asset.head.scene,
-    bones
-  );
-
+  const bones=cuBuildBoneMap(model);
   const palette=cuTeamPalette(teamId);
-  cuStylePlayerMesh(bodyModel,palette,role);
+  cuStylePlayerMesh(model,palette,role);
 
-  // Normalize the complete body+head character to a cricket-player height.
   root.updateMatrixWorld(true);
   let box=new THREE.Box3().setFromObject(root);
   const size=new THREE.Vector3();
@@ -1368,41 +2045,58 @@ async function cuCreatePlayer(role,teamId){
   root.position.y-=box.min.y;
 
   const mixer=new THREE.AnimationMixer(root);
-  const actions={};
 
-  const loopNames=new Set(["idle","walk","jog","keeper"]);
-
-  for(const [name,clip] of Object.entries(motion)){
-    if(!clip)continue;
-    const action=mixer.clipAction(clip);
-    if(loopNames.has(name)){
-      action.setLoop(THREE.LoopRepeat,Infinity);
-    }else{
-      action.setLoop(THREE.LoopOnce,1);
-      action.clampWhenFinished=true;
-    }
-    actions[name]=action;
-  }
-
-  const p={
+  const player={
     root,
-    model:bodyModel,
-    headModel,
+    model,
+    headModel:null,
     bones,
     mixer,
-    actions,
+    actions:{},
     role,
     palette,
     currentAction:null,
     source:asset.source
   };
 
-  cuAttachCricketKit(p,palette,role);
+  await cuAttachCricketKit(player,palette,role);
 
-  if(role==="keeper"&&actions.keeper)cuPlayPlayerAction(p,"keeper");
-  else cuPlayPlayerAction(p,"idle");
+  const authored=cuBuildCricketClipLibrary(player);
+  const allClips={
+    ...(motion.jog?{jog:motion.jog}:{}),
+    ...authored
+  };
 
-  return p;
+  const loopNames=new Set([
+    "idle",
+    "jog",
+    "batStance",
+    "keeperReady"
+  ]);
+
+  for(const [name,clip] of Object.entries(allClips)){
+    if(!clip)continue;
+
+    const action=mixer.clipAction(clip);
+    if(loopNames.has(name)){
+      action.setLoop(THREE.LoopRepeat,Infinity);
+      action.clampWhenFinished=false;
+    }else{
+      action.setLoop(THREE.LoopOnce,1);
+      action.clampWhenFinished=true;
+    }
+    player.actions[name]=action;
+  }
+
+  if(role==="batter"){
+    cuPlayPlayerAction(player,"batStance",.05,1);
+  }else if(role==="keeper"){
+    cuPlayPlayerAction(player,"keeperReady",.05,1);
+  }else{
+    cuPlayPlayerAction(player,"idle",.05,1);
+  }
+
+  return player;
 }
 
 function cuPlayPlayerAction(p,name,fade=.16,timeScale=1){
@@ -1555,262 +2249,126 @@ function cuMakeSeatMesh(count){
   return new THREE.InstancedMesh(geo,mat,count);
 }
 
-function cuBuildStadium(scene){
-  const stadium=new THREE.Group();
-  scene.add(stadium);
+function cuAddCrowdLOD(stadium){
+  const crowdGroup=new THREE.Group();
+  crowdGroup.name="CricketUniverseCrowdLOD";
 
-  const concrete=new THREE.MeshStandardMaterial({
-    color:0x69747e,
-    roughness:.92
-  });
-  const dark=new THREE.MeshStandardMaterial({
-    color:0x222c35,
-    roughness:.82
-  });
-  const roofMat=new THREE.MeshPhysicalMaterial({
-    color:0xa8b2bb,
-    roughness:.43,
-    metalness:.58
-  });
+  const shirtColors=[0x2278c8,0xe24d45,0xf0b62d,0x28a068,0x804fc2];
+  const perColor=240;
 
-  // Three continuous tiers, split into segments.
-  for(let tier=0;tier<3;tier++){
-    const radius=49.5+tier*5.2;
-    const y=1.8+tier*4.0;
+  for(let c=0;c<shirtColors.length;c++){
+    const bodyGeo=new THREE.BoxGeometry(.12,.28,.08);
+    const headGeo=new THREE.SphereGeometry(.055,5,4);
+    const bodyMat=new THREE.MeshStandardMaterial({
+      color:shirtColors[c],
+      roughness:.78
+    });
+    const headMat=new THREE.MeshStandardMaterial({
+      color:0xbd8b68,
+      roughness:.85
+    });
 
-    for(let i=0;i<40;i++){
-      const a0=i/40*Math.PI*2;
-      const a1=(i+1)/40*Math.PI*2;
-      const mid=(a0+a1)/2;
+    const bodies=new THREE.InstancedMesh(bodyGeo,bodyMat,perColor);
+    const heads=new THREE.InstancedMesh(headGeo,headMat,perColor);
+    const dummy=new THREE.Object3D();
 
-      const seg=new THREE.Mesh(
-        new THREE.BoxGeometry(7.7,2.5,4.2),
-        tier===2?dark:concrete
-      );
-      seg.position.set(Math.cos(mid)*radius,y,Math.sin(mid)*radius);
-      seg.rotation.y=-mid+Math.PI/2;
-      seg.castShadow=true;
-      seg.receiveShadow=true;
-      stadium.add(seg);
-    }
-  }
+    for(let i=0;i<perColor;i++){
+      const idx=c*perColor+i;
+      const a=(idx/(perColor*shirtColors.length))*Math.PI*2*7.0;
+      const radialBand=idx%9;
+      const r=25.5+radialBand*1.65;
+      const y=2.0+radialBand*.68+(idx%3)*.08;
 
-  // Visible individual seats in front two tiers.
-  const rows=7;
-  const perRow=170;
-  const seats=cuMakeSeatMesh(rows*perRow);
-  const dummy=new THREE.Object3D();
-  let si=0;
-  for(let row=0;row<rows;row++){
-    const radius=48.0+row*.58;
-    const y=2.20+row*.36;
-    for(let i=0;i<perRow;i++){
-      const a=i/perRow*Math.PI*2;
       dummy.position.set(
-        Math.cos(a)*radius,
+        Math.cos(a)*r,
         y,
-        Math.sin(a)*radius
+        Math.sin(a)*r
       );
       dummy.rotation.y=-a+Math.PI/2;
+      dummy.scale.setScalar(.92+(idx%5)*.025);
       dummy.updateMatrix();
-      seats.setMatrixAt(si++,dummy.matrix);
+      bodies.setMatrixAt(i,dummy.matrix);
+
+      dummy.position.y+=.21;
+      dummy.scale.setScalar(.92);
+      dummy.updateMatrix();
+      heads.setMatrixAt(i,dummy.matrix);
     }
-  }
-  seats.instanceMatrix.needsUpdate=true;
-  stadium.add(seats);
 
-  // Crowd: body + head instances. Much more obvious than dots.
-  const crowdCount=1300;
-  const bodyGeo=new THREE.CapsuleGeometry(.075,.22,3,5);
-  const bodyMat=new THREE.MeshStandardMaterial({
-    color:0x9e3348,
-    roughness:.72
-  });
-  const headGeo=new THREE.SphereGeometry(.055,6,5);
-  const headMat=new THREE.MeshStandardMaterial({
-    color:0xc89570,
-    roughness:.8
-  });
-  const bodies=new THREE.InstancedMesh(bodyGeo,bodyMat,crowdCount);
-  const heads=new THREE.InstancedMesh(headGeo,headMat,crowdCount);
-
-  for(let i=0;i<crowdCount;i++){
-    const ring=i%9;
-    const a=(i/crowdCount)*Math.PI*2*9;
-    const radius=48.6+ring*.55;
-    const y=2.35+ring*.34;
-    dummy.position.set(Math.cos(a)*radius,y,Math.sin(a)*radius);
-    dummy.rotation.y=-a+Math.PI/2;
-    dummy.scale.setScalar(.85+(i%5)*.045);
-    dummy.updateMatrix();
-    bodies.setMatrixAt(i,dummy.matrix);
-
-    dummy.position.y+=.23;
-    dummy.scale.setScalar(.90);
-    dummy.updateMatrix();
-    heads.setMatrixAt(i,dummy.matrix);
-  }
-  bodies.instanceMatrix.needsUpdate=true;
-  heads.instanceMatrix.needsUpdate=true;
-  stadium.add(bodies,heads);
-
-  // Roof ring.
-  const roof=new THREE.Mesh(
-    new THREE.TorusGeometry(59.5,2.1,8,128),
-    roofMat
-  );
-  roof.rotation.x=Math.PI/2;
-  roof.position.y=13.6;
-  roof.scale.z=.36;
-  stadium.add(roof);
-
-  // Scoreboard/video screen.
-  const board=new THREE.Mesh(
-    new THREE.BoxGeometry(13,6,.55),
-    new THREE.MeshStandardMaterial({
-      color:0x08131d,
-      emissive:0x08263f,
-      emissiveIntensity:1.3,
-      roughness:.28
-    })
-  );
-  board.position.set(0,11,-57);
-  stadium.add(board);
-
-  const boardTextCanvas=document.createElement("canvas");
-  boardTextCanvas.width=1024;
-  boardTextCanvas.height=420;
-  const ctx=boardTextCanvas.getContext("2d");
-  ctx.fillStyle="#071520";
-  ctx.fillRect(0,0,1024,420);
-  ctx.fillStyle="#4ce2ff";
-  ctx.font="900 66px system-ui";
-  ctx.textAlign="center";
-  ctx.fillText("CRICKET UNIVERSE",512,145);
-  ctx.fillStyle="#ffffff";
-  ctx.font="700 36px system-ui";
-  ctx.fillText("LIVE • AI CRICKET",512,220);
-  ctx.fillStyle="#7f8f9d";
-  ctx.font="600 26px system-ui";
-  ctx.fillText("MANAGER CONTROL • BROADCAST SIMULATION",512,280);
-  const boardTex=new THREE.CanvasTexture(boardTextCanvas);
-  boardTex.colorSpace=THREE.SRGBColorSpace;
-  const screen=new THREE.Mesh(
-    new THREE.PlaneGeometry(12.3,5.25),
-    new THREE.MeshBasicMaterial({map:boardTex})
-  );
-  screen.position.set(0,11,-56.70);
-  stadium.add(screen);
-
-  // Sight screens.
-  for(const z of[-45.5,45.5]){
-    const ss=new THREE.Mesh(
-      new THREE.BoxGeometry(12.5,6.2,.45),
-      new THREE.MeshStandardMaterial({
-        color:0xf0eee6,
-        roughness:.70
-      })
-    );
-    ss.position.set(0,3.2,z);
-    stadium.add(ss);
+    bodies.instanceMatrix.needsUpdate=true;
+    heads.instanceMatrix.needsUpdate=true;
+    crowdGroup.add(bodies,heads);
   }
 
-  // Player dugouts.
-  for(const x of[-27,27]){
-    const dugout=new THREE.Mesh(
-      new THREE.BoxGeometry(8,2.6,3.6),
-      new THREE.MeshPhysicalMaterial({
-        color:0x29475a,
-        transparent:true,
-        opacity:.72,
-        roughness:.22,
-        metalness:.12
-      })
-    );
-    dugout.position.set(x,1.3,1);
-    stadium.add(dugout);
-  }
+  stadium.add(crowdGroup);
+  stadium.userData.crowdGroup=crowdGroup;
+  return crowdGroup;
+}
 
-  // LED boundary advertising.
-  const adGeo=new THREE.BoxGeometry(5.3,.65,.18);
-  for(let i=0;i<48;i++){
-    const a=i/48*Math.PI*2;
-    const ad=new THREE.Mesh(
-      adGeo,
-      new THREE.MeshStandardMaterial({
-        color:i%2?0x0b2432:0x39144e,
-        emissive:i%2?0x0b6885:0x5e1879,
-        emissiveIntensity:.9
-      })
-    );
-    ad.position.set(Math.cos(a)*43.7,.42,Math.sin(a)*43.7);
-    ad.rotation.y=-a+Math.PI/2;
-    stadium.add(ad);
-  }
 
-  // Eight floodlight towers.
-  for(let i=0;i<8;i++){
-    const a=i/8*Math.PI*2;
-    const x=Math.cos(a)*61;
-    const z=Math.sin(a)*61;
+async function cuBuildStadium(scene){
+  const gltf=await cuLoadStadiumAsset();
+  const stadium=gltf.scene.clone(true);
 
-    const pole=new THREE.Mesh(
-      new THREE.CylinderGeometry(.12,.22,25,12),
-      new THREE.MeshStandardMaterial({
-        color:0x65707b,
-        metalness:.72,
-        roughness:.31
-      })
-    );
-    pole.position.set(x,12.5,z);
-    stadium.add(pole);
+  stadium.traverse(o=>{
+    if(!o.isMesh)return;
 
-    const bank=new THREE.Mesh(
-      new THREE.BoxGeometry(5.2,2.0,.40),
-      new THREE.MeshStandardMaterial({
-        color:0xe8eef1,
-        emissive:0xcceaff,
-        emissiveIntensity:2.1,
-        roughness:.25
-      })
-    );
-    bank.position.set(x,24.3,z);
-    bank.lookAt(0,3,0);
-    stadium.add(bank);
-  }
+    o.castShadow=true;
+    o.receiveShadow=true;
 
-  const flagPoleMat=new THREE.MeshStandardMaterial({color:0xe8edf1,metalness:.5,roughness:.42});
-  const flagMat=new THREE.MeshStandardMaterial({color:0xff8c19,roughness:.55,side:THREE.DoubleSide});
-  for(let i=0;i<18;i++){
-    const a=i/18*Math.PI*2;
-    const r=58.4;
-    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,1.55,6),flagPoleMat);
-    pole.position.set(Math.cos(a)*r,14.65,Math.sin(a)*r);
-    stadium.add(pole);
-    const flag=new THREE.Mesh(new THREE.PlaneGeometry(.72,.38),flagMat);
-    flag.position.set(Math.cos(a)*r,15.23,Math.sin(a)*r);
-    flag.rotation.y=-a+Math.PI/2;
-    flag.position.x+=Math.cos(a)*.28;
-    flag.position.z+=Math.sin(a)*.28;
-    stadium.add(flag);
-  }
+    if(o.material){
+      const materials=Array.isArray(o.material)?o.material:[o.material];
+      const clones=materials.map(original=>{
+        if(!original)return original;
+        const m=original.clone();
+        const label=(
+          String(original.name||"")+" "+String(o.name||"")
+        ).toLowerCase();
 
-  const cloudMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,transparent:true,opacity:.92});
-  const cloudPositions=[[-36,28,-86],[-10,31,-91],[25,28,-88],[48,30,-72]];
-  for(const c of cloudPositions){
-    const cloud=new THREE.Group();
-    for(let j=0;j<6;j++){
-      const puff=new THREE.Mesh(new THREE.SphereGeometry(3.8+(j%3)*1.1,16,12),cloudMat);
-      puff.scale.set(1.5,.72,1);
-      puff.position.set((j-2.5)*3.2,Math.sin(j)*1.1,(j%2)*1.4);
-      cloud.add(puff);
+        if("roughness" in m)m.roughness=Math.max(.38,m.roughness??.58);
+
+        if(label.includes("scoreboard_screen")){
+          if("emissiveIntensity" in m)m.emissiveIntensity=1.7;
+        }
+        if(label.includes("emissive")){
+          if("emissiveIntensity" in m)m.emissiveIntensity=2.2;
+        }
+        return m;
+      });
+
+      o.material=Array.isArray(o.material)?clones:clones[0];
     }
-    cloud.position.set(c[0],c[1],c[2]);
-    stadium.add(cloud);
-  }
+  });
 
+  // Normalize around the cricket square. The original stadium is about
+  // 96 units across, already close to the match coordinate system.
+  stadium.updateMatrixWorld(true);
+  let box=new THREE.Box3().setFromObject(stadium);
+  const size=new THREE.Vector3();
+  const center=new THREE.Vector3();
+  box.getSize(size);
+  box.getCenter(center);
+
+  const horizontal=Math.max(size.x,size.z,.001);
+  const targetDiameter=96;
+  stadium.scale.multiplyScalar(targetDiameter/horizontal);
+
+  stadium.updateMatrixWorld(true);
+  box=new THREE.Box3().setFromObject(stadium);
+  box.getCenter(center);
+
+  stadium.position.x-=center.x;
+  stadium.position.z-=center.z;
+
+  stadium.updateMatrixWorld(true);
+  box=new THREE.Box3().setFromObject(stadium);
+  stadium.position.y-=box.min.y;
+
+  cuAddCrowdLOD(stadium);
+  scene.add(stadium);
   return stadium;
 }
+
 
 function initThree(){
   if(three?.ready)return three.ready;
@@ -1872,142 +2430,35 @@ function initThree(){
   fill.position.set(25,16,-30);
   scene.add(fill);
 
-  // Outfield with layered mowing.
-  const ground=new THREE.Mesh(
-    new THREE.CircleGeometry(46,160),
-    new THREE.MeshStandardMaterial({
-      color:0x42b84f,
-      roughness:.96
-    })
-  );
-  ground.rotation.x=-Math.PI/2;
-  ground.receiveShadow=true;
-  scene.add(ground);
+  cuAssetStatus("V8 • LOADING REAL STADIUM");
 
-  for(let z=-44;z<44;z+=6){
-    const band=new THREE.Mesh(
-      new THREE.PlaneGeometry(92,3),
-      new THREE.MeshBasicMaterial({
-        color:(Math.round((z+44)/6)%2)?0x2f7740:0x4b9e57,
-        transparent:true,
-        opacity:.22,
-        depthWrite:false
-      })
-    );
-    band.rotation.x=-Math.PI/2;
-    band.position.set(0,.013,z);
-    scene.add(band);
-  }
+  // Real uploaded stadium: grass, pitch, seating, boundary, scoreboard,
+  // structures and floodlights all come from the GLB asset.
+  const stadium=await cuBuildStadium(scene);
 
-  // Inner ring subtle texture.
-  for(let r=10;r<=40;r+=7){
-    const ring=new THREE.Mesh(
-      new THREE.RingGeometry(r-.10,r+.10,128),
-      new THREE.MeshBasicMaterial({
-        color:0xd8e3d3,
-        transparent:true,
-        opacity:.06,
-        side:THREE.DoubleSide
-      })
-    );
-    ring.rotation.x=-Math.PI/2;
-    ring.position.y=.016;
-    scene.add(ring);
-  }
-
-  // Pitch.
-  const pitch=new THREE.Mesh(
-    new THREE.BoxGeometry(4.45,.10,22.5),
-    new THREE.MeshStandardMaterial({
-      color:0xc9ac75,
-      roughness:.88
-    })
-  );
-  pitch.position.y=.05;
-  pitch.receiveShadow=true;
-  scene.add(pitch);
-
-  const worn=new THREE.Mesh(
-    new THREE.PlaneGeometry(1.65,16.5),
-    new THREE.MeshBasicMaterial({
-      color:0x886a46,
-      transparent:true,
-      opacity:.22
-    })
-  );
-  worn.rotation.x=-Math.PI/2;
-  worn.position.y=.106;
-  scene.add(worn);
-
-  const lineMat=new THREE.MeshBasicMaterial({color:0xf6f3e8});
-  for(const z of[-8.25,8.25]){
-    const crease=new THREE.Mesh(new THREE.PlaneGeometry(4.8,.055),lineMat);
-    crease.rotation.x=-Math.PI/2;
-    crease.position.set(0,.108,z);
-    scene.add(crease);
-
-    const pop=new THREE.Mesh(new THREE.PlaneGeometry(3.75,.05),lineMat);
-    pop.rotation.x=-Math.PI/2;
-    pop.position.set(0,.109,z+(z<0?1.22:-1.22));
-    scene.add(pop);
-  }
-
-  // Boundary.
-  const boundary=new THREE.Mesh(
-    new THREE.TorusGeometry(43.2,.11,8,180),
-    new THREE.MeshStandardMaterial({
-      color:0xffffff,
-      roughness:.45
-    })
-  );
-  boundary.rotation.x=Math.PI/2;
-  boundary.position.y=.06;
-  scene.add(boundary);
-
-  const stadium=cuBuildStadium(scene);
-
-  // Stumps.
-  const stumpMat=new THREE.MeshStandardMaterial({
-    color:0xf4e4bc,
-    roughness:.48
-  });
+  // Real uploaded cricket equipment.
+  const ball=await cuCreateRealBall();
   const stumpSets=[];
-  for(const z of[-8.25,8.25]){
-    const set={stumps:[],bails:[]};
-    for(const x of[-.22,0,.22]){
-      const stump=new THREE.Mesh(
-        new THREE.CylinderGeometry(.032,.032,.84,10),
-        stumpMat
-      );
-      stump.position.set(x,.42,z);
-      stump.castShadow=true;
-      scene.add(stump);
-      set.stumps.push(stump);
-    }
-    for(const x of[-.11,.11]){
-      const bail=new THREE.Mesh(
-        new THREE.CylinderGeometry(.018,.018,.24,8),
-        stumpMat
-      );
-      bail.rotation.z=Math.PI/2;
-      bail.position.set(x,.86,z);
-      scene.add(bail);
-      set.bails.push(bail);
-    }
-    stumpSets.push(set);
+
+  if(ball){
+    ball.position.set(0,1.48,13.75);
+    scene.add(ball);
   }
 
-  const ball=new THREE.Mesh(
-    new THREE.SphereGeometry(.070,20,16),
-    new THREE.MeshPhysicalMaterial({
-      color:0xa70f27,
-      roughness:.28,
-      clearcoat:.55,
-      clearcoatRoughness:.22
-    })
-  );
-  ball.castShadow=true;
-  scene.add(ball);
+  for(const z of[-8.25,8.25]){
+    const wicket=await cuCreateRealWicket();
+    if(!wicket)continue;
+
+    wicket.position.set(0,.425,z);
+    scene.add(wicket);
+
+    stumpSets.push({
+      root:wicket,
+      basePosition:wicket.position.clone(),
+      baseQuaternion:wicket.quaternion.clone(),
+      bails:[]
+    });
+  }
 
   const clock=new THREE.Clock();
 
@@ -2021,7 +2472,9 @@ function initThree(){
   resize();
 
   three={
-    scene,camera,renderer,stadium,ball,stumpSets,clock,
+    scene,camera,renderer,stadium,
+    crowdGroup:stadium?.userData?.crowdGroup||null,
+    ball,stumpSets,clock,
     fieldHome:[
       [-16,-1],[-13,13],[13,16],[17,0],
       [-15,-17],[15,-16],[-27,9],[27,10],[-28,-11]
@@ -2038,7 +2491,7 @@ function initThree(){
   })();
 
   three.ready=(async()=>{
-    cuAssetStatus("V7 • LOADING CLOTHED RIG + MOTION");
+    cuAssetStatus("V9 • LOADING CRICKET ANIMATION LIBRARY");
 
     try{
       const batId=match?.battingTeam?.id||"bat";
@@ -2084,12 +2537,12 @@ function initThree(){
       three.fielders=fielders;
       three.athletes=[batter,non,bowler,keeper,umpire,...fielders];
 
-      cuAssetStatus("RETARGETED CRICKET MOTION • READY");
+      cuAssetStatus("V9 CRICKET MOTION • READY");
       setTimeout(()=>$("graphicsStatus")?.classList.add("faded"),2200);
 
     }catch(e){
       console.error(e);
-      cuAssetStatus("PLAYER ASSET FAILED • CHECK INTERNET",true);
+      cuAssetStatus("3D ASSET LOAD FAILED • MENUS STILL AVAILABLE",true);
     }
   })();
 
@@ -2107,8 +2560,8 @@ async function cuRunBatters(runs){
   if(!t?.batter||!t?.non||runs<=0)return;
 
   const crossings=Math.min(3,runs);
-  cuPlayPlayerAction(t.batter,"jog",.10,1.15);
-  cuPlayPlayerAction(t.non,"jog",.10,1.15);
+  cuPlayPlayerAction(t.batter,"jog",.08,1.24);
+  cuPlayPlayerAction(t.non,"jog",.08,1.24);
 
   for(let i=0;i<crossings;i++){
     const bp=t.batter.root.position.clone();
@@ -2117,26 +2570,413 @@ async function cuRunBatters(runs){
     await Promise.all([
       tweenPosition(
         t.batter,
-        new THREE.Vector3(np.x,0,np.z+(i%2?-.35:.35)),
-        720
+        new THREE.Vector3(
+          np.x,0,np.z+(i%2?-.32:.32)
+        ),
+        620
       ),
       tweenPosition(
         t.non,
-        new THREE.Vector3(bp.x,0,bp.z+(i%2?.35:-.35)),
-        720
+        new THREE.Vector3(
+          bp.x,0,bp.z+(i%2?.32:-.32)
+        ),
+        620
       )
     ]);
   }
 
-  cuPlayPlayerAction(t.batter,"idle",.14,1);
-  cuPlayPlayerAction(t.non,"idle",.14,1);
+  cuPlayPlayerAction(t.batter,"batStance",.10,1);
+  cuPlayPlayerAction(t.non,"batStance",.10,1);
 }
 
 function cuFieldCameraForTarget(target,isSix,isFour){
   const right=target.x>=0;
-  if(isSix)return new THREE.Vector3(right?24:-24,8.6,target.z>0?17:-17);
-  if(isFour)return new THREE.Vector3(right?19:-19,5.3,target.z>0?14:-14);
-  return new THREE.Vector3(right?15:-15,5.8,10.5);
+  const front=target.z>=0;
+
+  if(isSix){
+    return new THREE.Vector3(
+      right?31:-31,
+      11.5,
+      front?24:-24
+    );
+  }
+
+  if(isFour){
+    return new THREE.Vector3(
+      right?27:-27,
+      8.0,
+      front?20:-20
+    );
+  }
+
+  return new THREE.Vector3(
+    right?23:-23,
+    7.2,
+    front?17:-17
+  );
+}
+
+
+
+function cuSleep(ms){
+  return new Promise(r=>setTimeout(r,ms));
+}
+
+function cuAnimateBallArc(ball,to,ms,peak=5){
+  if(!ball)return Promise.resolve();
+
+  const from=ball.position.clone();
+  const start=performance.now();
+
+  return new Promise(resolve=>{
+    function frame(now){
+      const raw=Math.min(1,(now-start)/Math.max(ms,1));
+      const ease=raw<.5
+        ? 2*raw*raw
+        : 1-Math.pow(-2*raw+2,2)/2;
+
+      ball.position.lerpVectors(from,to,ease);
+
+      const baseY=THREE.MathUtils.lerp(from.y,to.y,ease);
+      ball.position.y=baseY+Math.sin(raw*Math.PI)*peak;
+
+      ball.rotation.x+=.18;
+      ball.rotation.z+=.12;
+
+      if(raw<1)requestAnimationFrame(frame);
+      else resolve();
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+function cuAnimateBallGround(ball,to,ms){
+  if(!ball)return Promise.resolve();
+
+  const from=ball.position.clone();
+  const start=performance.now();
+
+  return new Promise(resolve=>{
+    function frame(now){
+      const raw=Math.min(1,(now-start)/Math.max(ms,1));
+      const ease=1-Math.pow(1-raw,2.2);
+
+      ball.position.lerpVectors(from,to,ease);
+
+      // Small diminishing turf bounces before the ball rolls out.
+      const bounce=Math.max(0,1-raw*1.65);
+      ball.position.y=Math.max(
+        .12,
+        THREE.MathUtils.lerp(from.y,to.y,ease)
+        + Math.abs(Math.sin(raw*Math.PI*5))*bounce*.32
+      );
+
+      ball.rotation.x+=.24;
+      ball.rotation.z+=.17;
+
+      if(raw<1)requestAnimationFrame(frame);
+      else resolve();
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+function cuCrowdReact(level=1){
+  const crowd=three?.crowdGroup;
+  if(!crowd)return Promise.resolve();
+
+  const baseY=crowd.position.y;
+  const start=performance.now();
+  const ms=650;
+
+  return new Promise(resolve=>{
+    function frame(now){
+      const raw=Math.min(1,(now-start)/ms);
+      crowd.position.y=
+        baseY
+        + Math.sin(raw*Math.PI*6)
+        * (1-raw)
+        * .10
+        * level;
+
+      if(raw<1)requestAnimationFrame(frame);
+      else{
+        crowd.position.y=baseY;
+        resolve();
+      }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+function cuIsSpinBowler(){
+  const text=(
+    String(match?.currentBowler?.role||"")+" "+
+    String(match?.currentBowler?.bowling||"")
+  ).toLowerCase();
+  return text.includes("spin");
+}
+
+function cuChooseWicketVisual(o){
+  const text=String(o?.text||"").toLowerCase();
+
+  if(text.includes("stump"))return"stumped";
+  if(text.includes("caught")||text.includes("catch"))return"caught";
+  if(text.includes("bowled"))return"bowled";
+
+  if(cuIsSpinBowler()&&Math.random()<.28)return"stumped";
+  return Math.random()<.48?"caught":"bowled";
+}
+
+function cuChooseBatShot(runs,wicketVisual){
+  if(wicketVisual==="bowled"||wicketVisual==="stumped"){
+    return"shotMiss";
+  }
+
+  if(wicketVisual==="caught"){
+    return Math.random()<.55?"shotLoft":"shotPull";
+  }
+
+  if(runs===0)return Math.random()<.72?"shotDefence":"shotMiss";
+  if(runs===6)return Math.random()<.62?"shotLoft":"shotPull";
+  if(runs===4){
+    const r=Math.random();
+    if(r<.42)return"shotCover";
+    if(r<.68)return"shotStraight";
+    if(r<.86)return"shotCut";
+    return"shotPull";
+  }
+
+  const r=Math.random();
+  if(r<.38)return"shotCover";
+  if(r<.66)return"shotStraight";
+  if(r<.86)return"shotCut";
+  return"shotSweep";
+}
+
+async function cuUmpireSignal(kind){
+  const ump=three?.umpire;
+  if(!ump)return;
+
+  const action=
+    kind==="six"?"umpSix":
+    kind==="four"?"umpFour":
+    "umpOut";
+
+  cuCameraLabel(
+    kind==="six"?"UMPIRE • SIX":
+    kind==="four"?"UMPIRE • FOUR":
+    "UMPIRE • OUT"
+  );
+
+  await Promise.all([
+    cuCameraMove(
+      new THREE.Vector3(5.8,3.15,11.4),
+      new THREE.Vector3(0,1.55,7.65),
+      300
+    ),
+    cuPlayOnceAndWait(ump,action,1,.06)
+  ]);
+
+  cuPlayPlayerAction(ump,"idle",.10,1);
+}
+
+async function cuKeeperReceiveBall(){
+  const keeper=three?.keeper;
+  const ball=three?.ball;
+  if(!keeper||!ball)return;
+
+  cuCameraLabel("WICKETKEEPER");
+  await Promise.all([
+    cuAnimateBallArc(
+      ball,
+      new THREE.Vector3(0,1.08,-9.72),
+      360,
+      .18
+    ),
+    cuPlayOnceAndWait(keeper,"keeperCatch",1.05,.05),
+    cuCameraMove(
+      new THREE.Vector3(4.8,2.8,-5.1),
+      new THREE.Vector3(0,1.0,-9.4),
+      340
+    )
+  ]);
+
+  ball.visible=false;
+}
+
+async function cuFieldPickupAndThrow(fielder,target){
+  if(!fielder)return;
+
+  await cuPlayOnceAndWait(
+    fielder,
+    "fieldPickup",
+    1.12,
+    .05
+  );
+
+  const throwTarget=new THREE.Vector3(0,1.0,-8.0);
+  const ball=three?.ball;
+
+  await Promise.all([
+    cuPlayOnceAndWait(
+      fielder,
+      "fieldThrow",
+      1.14,
+      .05
+    ),
+    ball
+      ? cuAnimateBallArc(ball,throwTarget,460,1.6)
+      : Promise.resolve()
+  ]);
+
+  if(ball)ball.visible=false;
+}
+
+async function cuCaughtWicket(){
+  const t=three;
+  const batter=t.batter;
+
+  const targetCandidates=[
+    new THREE.Vector3(13,1.8,-2),
+    new THREE.Vector3(-14,2.1,-4),
+    new THREE.Vector3(18,1.5,8),
+    new THREE.Vector3(-18,1.7,7)
+  ];
+  const target=targetCandidates[
+    Math.floor(Math.random()*targetCandidates.length)
+  ];
+
+  const fielder=t.fielders.reduce((a,b)=>
+    a.root.position.distanceTo(target)
+    <
+    b.root.position.distanceTo(target)
+      ? a
+      : b
+  );
+
+  const catchPoint=new THREE.Vector3(
+    fielder.root.position.x*.72+target.x*.28,
+    1.75,
+    fielder.root.position.z*.72+target.z*.28
+  );
+
+  cuCameraLabel("CATCH CAMERA");
+  cuPlayPlayerAction(fielder,"jog",.08,1.25);
+
+  await Promise.all([
+    tweenPosition(
+      fielder,
+      new THREE.Vector3(catchPoint.x,0,catchPoint.z),
+      780
+    ),
+    cuAnimateBallArc(
+      t.ball,
+      catchPoint,
+      860,
+      4.1
+    ),
+    cuCameraMove(
+      new THREE.Vector3(
+        catchPoint.x+(catchPoint.x>=0?7:-7),
+        5.0,
+        catchPoint.z+7
+      ),
+      catchPoint,
+      540
+    )
+  ]);
+
+  await cuPlayOnceAndWait(
+    fielder,
+    "fieldCatch",
+    1.15,
+    .04
+  );
+
+  t.ball.visible=false;
+  await cuCrowdReact(.75);
+}
+
+async function cuBowledWicket(){
+  const t=three;
+  cuCameraLabel("BOWLED");
+
+  await Promise.all([
+    cuAnimateBallArc(
+      t.ball,
+      new THREE.Vector3(0,.44,-8.22),
+      330,
+      .08
+    ),
+    cuCameraMove(
+      new THREE.Vector3(4.8,3.4,-2.0),
+      new THREE.Vector3(0,.72,-8.15),
+      360
+    )
+  ]);
+
+  const near=t.stumpSets[0];
+  if(near?.root){
+    near.root.rotation.z+=.22;
+    near.root.rotation.x-=.08;
+    near.root.position.y+=.04;
+  }
+
+  await Promise.all([
+    cuPlayOnceAndWait(t.keeper,"keeperCatch",1.05,.05),
+    cuPlayOnceAndWait(t.bowler,"wicketCelebrate",1,.07),
+    cuCrowdReact(.65)
+  ]);
+
+  t.ball.visible=false;
+}
+
+async function cuStumpedWicket(){
+  const t=three;
+  const keeper=t.keeper;
+  const batter=t.batter;
+
+  cuCameraLabel("STUMPING CAMERA");
+
+  // Batter advances out of the crease as the keeper receives the ball.
+  const advance=batter.root.position.clone();
+  advance.z-=.52;
+
+  await Promise.all([
+    tweenPosition(batter,advance,330),
+    cuAnimateBallArc(
+      t.ball,
+      new THREE.Vector3(0,1.02,-9.62),
+      380,
+      .14
+    ),
+    cuCameraMove(
+      new THREE.Vector3(-4.8,2.7,-5.2),
+      new THREE.Vector3(0,1.0,-8.9),
+      340
+    )
+  ]);
+
+  await cuPlayOnceAndWait(
+    keeper,
+    "keeperStump",
+    1.15,
+    .04
+  );
+
+  const near=t.stumpSets[0];
+  if(near?.root){
+    near.root.rotation.z-=.14;
+    near.root.position.y+=.025;
+  }
+
+  t.ball.visible=false;
+
+  await Promise.all([
+    cuPlayOnceAndWait(t.bowler,"wicketCelebrate",1,.07),
+    cuCrowdReact(.72)
+  ]);
 }
 
 async function animateDelivery(o){
@@ -2144,12 +2984,16 @@ async function animateDelivery(o){
   await three?.ready;
 
   const t=three;
-  if(!t?.batter||!t?.bowler)return;
+  if(!t?.batter||!t?.bowler||!t?.keeper||!t?.umpire||!t?.ball)return;
 
   const bowler=t.bowler;
   const batter=t.batter;
   const keeper=t.keeper;
+  const umpire=t.umpire;
+  const runs=Number(o.runs||0);
+  const wicketVisual=o.wicket?cuChooseWicketVisual(o):null;
 
+  // Reset on-field positions.
   bowler.root.position.set(0,0,15.3);
   bowler.root.rotation.set(0,Math.PI,0);
 
@@ -2159,245 +3003,352 @@ async function animateDelivery(o){
   keeper.root.position.set(0,0,-10.0);
   keeper.root.rotation.set(0,0,0);
 
-  if(batter.bat)batter.bat.rotation.set(.10,0,-.12);
-
-  cuPlayPlayerAction(batter,"idle",.12,1);
-  cuPlayPlayerAction(keeper,keeper.actions.keeper?"keeper":"idle",.12,1);
+  umpire.root.position.set(0,0,7.65);
+  umpire.root.rotation.set(0,Math.PI,0);
 
   t.fielders.forEach((f,i)=>{
     const p=t.fieldHome[i];
     f.root.position.set(p[0],0,p[1]);
     f.root.lookAt(0,0,0);
-    cuPlayPlayerAction(f,"idle",.12,1);
+    cuPlayPlayerAction(f,"idle",.08,1);
   });
 
   for(const set of t.stumpSets){
-    set.bails.forEach((b,i)=>{
-      b.rotation.set(0,0,Math.PI/2);
-      b.position.y=.86;
-      b.position.x=(i===0?-.11:.11);
-    });
+    if(set.root){
+      set.root.position.copy(set.basePosition);
+      set.root.quaternion.copy(set.baseQuaternion);
+    }
   }
 
   t.ball.visible=true;
-  t.ball.position.set(0,1.48,13.75);
+  t.ball.position.set(0,1.50,13.72);
+
+  // Natural pre-delivery roles.
+  cuPlayPlayerAction(batter,"batStance",.08,1);
+  cuPlayPlayerAction(keeper,"keeperReady",.08,1);
+  cuPlayPlayerAction(umpire,"idle",.08,1);
 
   cuCameraLabel("BOWLER END");
   await cuCameraMove(
     new THREE.Vector3(0,5.35,24.6),
     new THREE.Vector3(0,1.05,-3.2),
-    320
+    260
   );
 
   // ---------------------------------------------------------------
-  // 1. REAL LOCOMOTION CLIP FOR RUN-UP
+  // BOWLER RUN-UP
   // ---------------------------------------------------------------
-  cuPlayPlayerAction(bowler,"jog",.10,1.28);
+  cuPlayPlayerAction(bowler,"jog",.08,1.30);
+
   await tweenPosition(
     bowler,
-    new THREE.Vector3(0,0,9.35),
-    1500
+    new THREE.Vector3(0,0,9.30),
+    1260
   );
 
   // ---------------------------------------------------------------
-  // 2. REAL OVERHAND-THROW SKELETAL CLIP, RETARGETED TO VITRUVIAN.
-  //    The ball is released during the clip instead of rotating bones
-  //    by hand.
+  // CRICKET-SPECIFIC DELIVERY CLIP
   // ---------------------------------------------------------------
-  cuCameraLabel("DELIVERY");
-  const bowlScale=1.18;
-  const bowlMs=cuActionDurationMs(bowler,"bowl",bowlScale)||760;
-  const bowlPromise=cuPlayOnceAndWait(bowler,"bowl",bowlScale,.08);
+  cuCameraLabel(cuIsSpinBowler()?"SPIN DELIVERY":"PACE DELIVERY");
 
-  await new Promise(r=>setTimeout(r,Math.max(180,bowlMs*.42)));
+  const bowlAction=cuIsSpinBowler()
+    ?"spinDelivery"
+    :"bowlDelivery";
 
-  // Ball to pitch.
-  const ballToPitch=tweenPosition(
+  const bowlMs=cuActionDurationMs(
+    bowler,
+    bowlAction,
+    1.08
+  )||1120;
+
+  const bowlPromise=cuPlayOnceAndWait(
+    bowler,
+    bowlAction,
+    1.08,
+    .05
+  );
+
+  // Release occurs around the front-arm / bowling-arm crossover.
+  await cuSleep(Math.max(230,bowlMs*.47));
+
+  // Ball travels to pitch then rises toward the batter.
+  await cuAnimateBallArc(
     t.ball,
-    new THREE.Vector3((Math.random()-.5)*.20,.16,-4.25),
-    600,
-    (_p,raw)=>{
-      t.ball.position.y+=Math.sin(raw*Math.PI)*.34;
-    }
+    new THREE.Vector3(
+      (Math.random()-.5)*.18,
+      .15,
+      -4.15
+    ),
+    460,
+    .34
   );
 
-  await ballToPitch;
-
-  // Bounce to batter.
-  await tweenPosition(
+  await cuAnimateBallArc(
     t.ball,
-    new THREE.Vector3((Math.random()-.5)*.16,.82,-7.02),
-    275
+    new THREE.Vector3(
+      (Math.random()-.5)*.14,
+      .80,
+      -7.00
+    ),
+    235,
+    .12
   );
 
   // ---------------------------------------------------------------
-  // 3. REAL SKELETAL BATTING MOTION.
-  //    Melee_Hook is used as the current CC0 source motion because it
-  //    provides a natural torso/shoulder swing without deforming the rig.
+  // BATTER SHOT
   // ---------------------------------------------------------------
-  const runs=Number(o.runs||0);
-  const attacking=!o.wicket && runs>=2;
-  const batAction=attacking && batter.actions.batAttack
-    ? "batAttack"
-    : (batter.actions.batDefend?"batDefend":"idle");
+  const shot=cuChooseBatShot(runs,wicketVisual);
 
-  if(batAction!=="idle"){
+  if(shot && batter.actions[shot]){
     void cuPlayOnceAndWait(
       batter,
-      batAction,
-      attacking?1.30:1.05,
-      .07
+      shot,
+      runs===6?1.14:1.08,
+      .04
     );
   }
 
+  await cuSleep(90);
+
+  // ---------------------------------------------------------------
+  // WICKETS
+  // ---------------------------------------------------------------
   if(o.wicket){
-    cuCameraLabel("WICKET CAM");
-
-    await Promise.all([
-      tweenPosition(
-        t.ball,
-        new THREE.Vector3(0,.45,-8.24),
-        350
-      ),
-      cuCameraMove(
-        new THREE.Vector3(4.8,3.8,-2.3),
-        new THREE.Vector3(0,.8,-8.0),
-        500
-      )
-    ]);
-
-    const near=t.stumpSets[0];
-    near?.bails.forEach((b,i)=>{
-      b.rotation.z+=.65*(i?1:-1);
-      b.position.y+=.28;
-      b.position.x+=(i?1:-1)*.13;
-    });
-
-    await new Promise(r=>setTimeout(r,460));
-
-  }else{
-    const isSix=runs===6;
-    const isFour=runs===4;
-
-    const zones=[
-      new THREE.Vector3(32,isSix?5.5:.16,-27),
-      new THREE.Vector3(-34,isSix?6.2:.16,-21),
-      new THREE.Vector3(31,isSix?5.8:.16,27),
-      new THREE.Vector3(-32,isSix?6.0:.16,29),
-      new THREE.Vector3(24,isSix?5.2:.16,-4),
-      new THREE.Vector3(-25,isSix?5.4:.16,5)
-    ];
-
-    const target=(isFour||isSix)
-      ? zones[Math.floor(Math.random()*zones.length)]
-      : new THREE.Vector3(
-          (Math.random()<.5?-1:1)*(9+Math.random()*10),
-          .14,
-          -9+Math.random()*19
-        );
-
-    const nearest=t.fielders.reduce((a,b)=>
-      a.root.position.distanceTo(target)
-      <
-      b.root.position.distanceTo(target)
-        ? a
-        : b
-    );
-
-    cuCameraLabel(
-      isSix?"SIX • CROWD CAM":
-      isFour?"FOUR • BOUNDARY CAM":
-      "FIELDING CAM"
-    );
-
-    cuPlayPlayerAction(nearest,"jog",.10,1.20);
-
-    const fieldTarget=new THREE.Vector3(
-      target.x*.78,
-      0,
-      target.z*.78
-    );
-
-    const cameraPos=cuFieldCameraForTarget(
-      target,
-      isSix,
-      isFour
-    );
-
-    await Promise.all([
-      tweenPosition(
-        t.ball,
-        target,
-        isSix?1450:isFour?1250:900,
-        (_p,raw)=>{
-          if(isSix)t.ball.position.y+=Math.sin(raw*Math.PI)*7.2;
-          else if(isFour)t.ball.position.y+=Math.sin(raw*Math.PI)*1.1;
-        }
-      ),
-      tweenPosition(
-        nearest,
-        fieldTarget,
-        isFour||isSix?1300:900
-      ),
-      cuCameraMove(
-        cameraPos,
-        target.clone().multiplyScalar(.72),
-        isFour||isSix?850:620
-      )
-    ]);
-
-    cuPlayPlayerAction(nearest,"idle",.12,1);
-
-    if(runs>=1&&runs<=3){
-      cuCameraLabel("RUNNING BETWEEN WICKETS");
-      await cuRunBatters(runs);
+    if(wicketVisual==="caught"){
+      await cuCaughtWicket();
+    }else if(wicketVisual==="stumped"){
+      await cuStumpedWicket();
+    }else{
+      await cuBowledWicket();
     }
 
-    if(isSix){
-      await cuCameraMove(
-        new THREE.Vector3(
-          target.x>=0?34:-34,
-          9.2,
-          -39
-        ),
-        new THREE.Vector3(0,9.0,-55),
-        720
-      );
-      await new Promise(r=>setTimeout(r,800));
-    }else if(isFour){
-      await cuCameraMove(
-        new THREE.Vector3(
-          target.x>=0?22:-22,
-          3.8,
-          target.z*.35+8
-        ),
-        new THREE.Vector3(
-          target.x*.70,
-          .5,
-          target.z*.70
-        ),
-        520
-      );
-      await new Promise(r=>setTimeout(r,520));
-    }
+    await cuUmpireSignal("out");
+
+    cuPlayPlayerAction(batter,"batStance",.10,1);
+    cuPlayPlayerAction(keeper,"keeperReady",.10,1);
+    await bowlPromise;
+
+    cuCameraLabel("BOWLER END");
+    await cuCameraMove(
+      new THREE.Vector3(0,5.35,24.6),
+      new THREE.Vector3(0,1.05,-3.2),
+      330
+    );
+    return;
   }
 
+  // ---------------------------------------------------------------
+  // DOT BALL / KEEPER COLLECTION
+  // ---------------------------------------------------------------
+  if(runs===0){
+    if(shot==="shotMiss"){
+      await cuKeeperReceiveBall();
+    }else{
+      // Defensive block: ball drops safely in front of the batter.
+      cuCameraLabel("DEFENSIVE SHOT");
+      await cuAnimateBallGround(
+        t.ball,
+        new THREE.Vector3(
+          (Math.random()-.5)*1.7,
+          .12,
+          -5.4
+        ),
+        430
+      );
+      t.ball.visible=false;
+    }
+
+    await bowlPromise;
+    cuPlayPlayerAction(bowler,"idle",.10,1);
+    cuPlayPlayerAction(batter,"batStance",.10,1);
+    cuPlayPlayerAction(keeper,"keeperReady",.10,1);
+
+    cuCameraLabel("BOWLER END");
+    await cuCameraMove(
+      new THREE.Vector3(0,5.35,24.6),
+      new THREE.Vector3(0,1.05,-3.2),
+      300
+    );
+    return;
+  }
+
+  // ---------------------------------------------------------------
+  // FOUR / SIX / NORMAL FIELDING
+  // ---------------------------------------------------------------
+  const angleChoices=[
+    -.92,-.66,-.42,-.22,.22,.42,.66,.92,
+    2.22,2.48,2.72,2.96
+  ];
+  const theta=angleChoices[
+    Math.floor(Math.random()*angleChoices.length)
+  ];
+
+  const dir=new THREE.Vector3(
+    Math.sin(theta),
+    0,
+    Math.cos(theta)
+  ).normalize();
+
+  if(runs===6){
+    // Ball clears the rope and visibly enters the seating/crowd zone.
+    const crowdTarget=dir.clone().multiplyScalar(44.5);
+    crowdTarget.y=5.6+Math.random()*2.3;
+
+    cuCameraLabel("SIX • BALL TRACK");
+
+    await Promise.all([
+      cuAnimateBallArc(
+        t.ball,
+        crowdTarget,
+        1050,
+        11.5+Math.random()*2.5
+      ),
+      cuCameraMove(
+        new THREE.Vector3(
+          dir.x*22+(dir.x>=0?8:-8),
+          8.8,
+          dir.z*22+7
+        ),
+        crowdTarget.clone().multiplyScalar(.75),
+        640
+      )
+    ]);
+
+    t.ball.visible=false;
+
+    await Promise.all([
+      cuCrowdReact(1.35),
+      cuSleep(260)
+    ]);
+
+    await cuUmpireSignal("six");
+
+    await bowlPromise;
+    cuPlayPlayerAction(bowler,"idle",.10,1);
+    cuPlayPlayerAction(batter,"batStance",.10,1);
+    cuPlayPlayerAction(keeper,"keeperReady",.10,1);
+
+    cuCameraLabel("BOWLER END");
+    await cuCameraMove(
+      new THREE.Vector3(0,5.35,24.6),
+      new THREE.Vector3(0,1.05,-3.2),
+      300
+    );
+    return;
+  }
+
+  if(runs===4){
+    const ropeTarget=dir.clone().multiplyScalar(40.8);
+    ropeTarget.y=.12;
+
+    cuCameraLabel("FOUR • BOUNDARY TRACK");
+
+    await Promise.all([
+      cuAnimateBallGround(
+        t.ball,
+        ropeTarget,
+        1030
+      ),
+      cuCameraMove(
+        new THREE.Vector3(
+          dir.x*23+(dir.x>=0?8:-8),
+          6.0,
+          dir.z*23+6
+        ),
+        ropeTarget.clone().multiplyScalar(.78),
+        620
+      )
+    ]);
+
+    t.ball.visible=false;
+
+    await Promise.all([
+      cuCrowdReact(.85),
+      cuSleep(180)
+    ]);
+
+    await cuUmpireSignal("four");
+
+    await bowlPromise;
+    cuPlayPlayerAction(bowler,"idle",.10,1);
+    cuPlayPlayerAction(batter,"batStance",.10,1);
+    cuPlayPlayerAction(keeper,"keeperReady",.10,1);
+
+    cuCameraLabel("BOWLER END");
+    await cuCameraMove(
+      new THREE.Vector3(0,5.35,24.6),
+      new THREE.Vector3(0,1.05,-3.2),
+      300
+    );
+    return;
+  }
+
+  // 1 / 2 / 3 runs: fielder chases, picks up and throws.
+  const fieldTarget=dir.clone().multiplyScalar(
+    runs===3?25:runs===2?20:15
+  );
+  fieldTarget.y=.12;
+
+  const nearest=t.fielders.reduce((a,b)=>
+    a.root.position.distanceTo(fieldTarget)
+    <
+    b.root.position.distanceTo(fieldTarget)
+      ? a
+      : b
+  );
+
+  const fielderStop=fieldTarget.clone();
+  fielderStop.x*=.93;
+  fielderStop.z*=.93;
+  fielderStop.y=0;
+
+  cuCameraLabel("FIELDING CAMERA");
+  cuPlayPlayerAction(nearest,"jog",.08,1.28);
+
+  await Promise.all([
+    cuAnimateBallGround(
+      t.ball,
+      fieldTarget,
+      720
+    ),
+    tweenPosition(
+      nearest,
+      fielderStop,
+      750
+    ),
+    cuCameraMove(
+      new THREE.Vector3(
+        fielderStop.x+(fielderStop.x>=0?8:-8),
+        5.6,
+        fielderStop.z+7
+      ),
+      new THREE.Vector3(
+        fielderStop.x,
+        1.1,
+        fielderStop.z
+      ),
+      480
+    ),
+    cuRunBatters(runs)
+  ]);
+
+  await cuFieldPickupAndThrow(
+    nearest,
+    fieldTarget
+  );
+
+  cuPlayPlayerAction(nearest,"idle",.10,1);
   await bowlPromise;
 
-  cuPlayPlayerAction(bowler,"idle",.12,1);
-  cuPlayPlayerAction(batter,"idle",.12,1);
-  cuPlayPlayerAction(
-    keeper,
-    keeper.actions.keeper?"keeper":"idle",
-    .12,
-    1
-  );
+  cuPlayPlayerAction(bowler,"idle",.10,1);
+  cuPlayPlayerAction(batter,"batStance",.10,1);
+  cuPlayPlayerAction(keeper,"keeperReady",.10,1);
 
   cuCameraLabel("BOWLER END");
   await cuCameraMove(
     new THREE.Vector3(0,5.35,24.6),
     new THREE.Vector3(0,1.05,-3.2),
-    480
+    310
   );
 }
 
